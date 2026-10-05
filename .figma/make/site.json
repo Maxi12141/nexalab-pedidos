@@ -1,0 +1,10 @@
+{
+  "description": "Manage and view customer orders with detailed notes, upload photos of completed projects, and showcase them professionally on your website.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

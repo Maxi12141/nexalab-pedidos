@@ -1,0 +1,162 @@
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.brand-copy strong {
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.8px;
+  color: #f7f4ee;
+}
+
+.brand-copy strong > span {
+  color: #7ddecf;
+}
+
+.brand-copy small {
+  color: #8ea0ab;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.main-nav {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.nav-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #9aafb8;
+  background: transparent;
+  transition: background 0.18s, color 0.18s;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  gap: 12px;
+  margin-bottom: 0;
+  color: #d5e0e6;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: #1c303b;
+  color: #f4f7f8;
+}
+
+.nav-item.active {
+  background: #1a3a38;
+  color: #d8f7f2;
+  font-weight: 600;
+}
+
+.nav-item.active .nav-icon {
+  background: #14988c;
+  color: #062624;
+}
+
+.nav-item:hover .nav-icon {
+  color: #7ddecf;
+}
+
+.nav-item.active:hover .nav-icon {
+  color: #062624;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding-bottom: 8px;
+  width: 100%;
+}
+
+.sidebar-bottom > .nav-item {
+  margin-bottom: 8px;
+}
+
+.profile {
+  padding: 18px 8px 20px;
+}
+
+.profile strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f4f7f8;
+}
+
+.profile small {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  color: #8ea0ab;
+  font-size: 12px;
+}
+
+.profile .live-dot {
+  width: 7px;
+  height: 7px;
+}
+
+.profile .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 12px;
+  background: #243844;
+  color: #d8f7f2;
+  border-color: #34505c;
+}
+
+.web-card,
+.workspace,
+.nav-label {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .brand-copy small {
+    display: none;
+  }
+
+  .brand-copy strong {
+    font-size: 18px;
+  }
+
+  .main-nav {
+    margin-top: 0;
+    flex-direction: row;
+  }
+
+  .nav-icon {
+    width: auto;
+    height: auto;
+    background: transparent;
+  }
+
+  .nav-item {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+
+  .nav-item.active .nav-icon {
+    background: transparent;
+    color: #7ddecf;
+  }
+}
