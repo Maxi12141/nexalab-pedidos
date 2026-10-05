@@ -721,10 +721,7 @@
     color: #f7fbff;
   }
 
-  .detail-panel select,
-  .modal input,
-  .modal textarea,
-  .modal select {
+  .detail-panel select {
     background: #071422;
     color: #f7fbff;
     border-color: #1c3a52;
@@ -732,20 +729,10 @@
 
   .whatsapp-button,
   .modal .primary-button {
-    background: #3ef0b0;
-    color: #06281c;
+    background: #0f7c72;
+    color: #f4fffd;
     box-shadow: none;
   }
-
-  .modal {
-    background: #10253a;
-    border-color: #1c3a52;
-    color: #f7fbff;
-  }
-
-  .modal > p,
-  .modal form > label,
-  .form-columns label { color: #c5d4e4; }
 
   .secondary-button {
     background: #071422;

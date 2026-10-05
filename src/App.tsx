@@ -414,16 +414,28 @@ export default function App() {
 
   return <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}${detailOpen || modal || receiptOpen || readyOpen ? ' sheet-open' : ''}`}>
     {booting && (
-      <div className="boot-screen" role="status" aria-live="polite" aria-label="Cargando Nexalab">
-        <div className="boot-mark">
-          <svg viewBox="0 0 100 100" aria-hidden="true">
-            <circle className="boot-track" cx="50" cy="50" r="42" />
-            <circle className="boot-arc" cx="50" cy="50" r="42" />
-          </svg>
-          <strong>N</strong>
+      <div className="boot-screen" role="status" aria-live="polite" aria-label="Cargando Nexalab" translate="no">
+        <div className="boot-card">
+          <div className="boot-mark">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <defs>
+                <linearGradient id="boot-arc-grad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#5dfff0" />
+                  <stop offset="50%" stopColor="#3ef0b0" />
+                  <stop offset="100%" stopColor="#ffb048" />
+                </linearGradient>
+              </defs>
+              <rect className="boot-frame" x="6" y="6" width="108" height="108" rx="32" />
+              <circle className="boot-spin" cx="60" cy="60" r="48" />
+              <circle className="boot-track" cx="60" cy="60" r="36" />
+              <circle className="boot-arc" cx="60" cy="60" r="36" />
+            </svg>
+            <strong translate="no">N</strong>
+          </div>
+          <p className="boot-name" translate="no">Nexa<span>lab</span></p>
+          <p className="boot-caption">Preparando el taller</p>
+          <div className="boot-bar" aria-hidden="true"><span /></div>
         </div>
-        <p className="boot-name">Nexa<span>lab</span></p>
-        <p className="boot-caption">Preparando el taller</p>
       </div>
     )}
     <aside className="sidebar">
@@ -914,9 +926,13 @@ export default function App() {
       <div className="modal-backdrop" onClick={() => setModal(null)}>
         <section className="modal" role="dialog" aria-modal="true" aria-label={modal === 'order' ? 'Nuevo pedido' : 'Subir proyecto'} onClick={event => event.stopPropagation()}>
           <div className="modal-heading">
-            <h2>{modal === 'order' ? 'Nuevo pedido' : 'Nuevo proyecto'}</h2>
+            <div>
+              <span className="modal-kicker">{modal === 'order' ? 'Ingreso' : 'Trabajo'}</span>
+              <h2>{modal === 'order' ? 'Nuevo pedido' : 'Nuevo proyecto'}</h2>
+            </div>
             <button className="icon-button" aria-label="Cerrar" onClick={() => setModal(null)}><Icon name="close" /></button>
           </div>
+          <div className="modal-body">
           <p>{modal === 'order' ? 'Cliente, equipo y qué hay que revisar.' : 'Elegí la foto y los datos del trabajo.'}</p>
           <form onSubmit={event => {
             event.preventDefault()
@@ -937,15 +953,16 @@ export default function App() {
             }
             setModal(null)
           }}>
+            <div className="modal-fields">
             {modal === 'order' ? <>
-              <label>Nombre completo<input name="name" required placeholder="Nombre y apellido" /></label>
+              <label className="field field-teal">Nombre completo<input name="name" required placeholder="Nombre y apellido" /></label>
               <div className="form-columns">
-                <label>Correo electrónico<input name="email" type="email" required placeholder="cliente@email.com" /></label>
-                <label>Teléfono / WhatsApp<input name="phone" type="tel" required placeholder="+54 9 11..." /></label>
+                <label className="field field-blue">Correo electrónico<input name="email" type="email" required placeholder="cliente@email.com" /></label>
+                <label className="field field-green">Teléfono / WhatsApp<input name="phone" type="tel" required placeholder="+54 9 11..." /></label>
               </div>
-              <label>Equipo<input name="device" required placeholder="Marca y modelo del equipo" /></label>
-              <label>Problema<textarea name="problem" required rows={3} placeholder="Qué le pasa al equipo" /></label>
-              <label>Nota<textarea name="note" rows={2} placeholder="Algo más para tener en cuenta" /></label>
+              <label className="field field-amber">Equipo<input name="device" required placeholder="Marca y modelo del equipo" /></label>
+              <label className="field field-coral">Problema<textarea name="problem" required rows={2} placeholder="Qué le pasa al equipo" /></label>
+              <label className="field field-violet">Nota<textarea name="note" rows={2} placeholder="Algo más para tener en cuenta" /></label>
             </> : <>
               <label className="upload-zone">
                 <Icon name="upload" size={28} />
@@ -959,18 +976,20 @@ export default function App() {
                   reader.readAsDataURL(file)
                 }} />
               </label>
-              <label>Título<input name="title" required placeholder="Por ejemplo: Reparación de MacBook Pro" /></label>
-              <label>Categoría
+              <label className="field field-teal">Título<input name="title" required placeholder="Por ejemplo: Reparación de MacBook Pro" /></label>
+              <label className="field field-amber">Categoría
                 <select name="category"><option>Notebooks</option><option>Celulares</option><option>Computadoras</option><option>Tablets</option></select>
               </label>
               <label className="checkbox-label"><input name="publish" type="checkbox" defaultChecked />Publicar</label>
               {uploadError && <p className="error" role="alert">{uploadError}</p>}
             </>}
+            </div>
             <div className="modal-actions">
               <button type="button" className="secondary-button" onClick={() => setModal(null)}>Cancelar</button>
               <button type="submit" className="primary-button"><Icon name={modal === 'order' ? 'plus' : 'upload'} size={16} />{modal === 'order' ? 'Crear pedido' : 'Guardar proyecto'}</button>
             </div>
           </form>
+          </div>
         </section>
       </div>
     )}
