@@ -954,6 +954,98 @@ select { background-image: linear-gradient(45deg, transparent 50%, #7a7368 50%),
   line-height: 1.55;
 }
 
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(62, 240, 176, 0.18), transparent 34%),
+    #071422;
+  color: #f7fbff;
+}
+
+.boot-mark {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+}
+
+.boot-mark svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.boot-track,
+.boot-arc {
+  fill: none;
+  stroke-width: 6;
+}
+
+.boot-track { stroke: rgba(62, 240, 176, 0.18); }
+
+.boot-arc {
+  stroke: #3ef0b0;
+  stroke-linecap: round;
+  stroke-dasharray: 264;
+  stroke-dashoffset: 264;
+  animation: boot-draw 5s linear forwards;
+}
+
+.boot-mark strong {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: Manrope, sans-serif;
+  font-size: 34px;
+  color: #04281c;
+  background: radial-gradient(circle at 32% 28%, #e9fff6, #3ef0b0 58%, #12c98d);
+  animation: boot-pulse 1.4s ease-in-out infinite;
+}
+
+.boot-name {
+  margin: 8px 0 0;
+  font-family: Manrope, sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.boot-name span { color: #3ef0b0; }
+
+.boot-caption {
+  margin: 0;
+  color: #9eb4c6;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@keyframes boot-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes boot-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-arc { animation-duration: 5s; }
+  .boot-mark strong { animation: none; }
+}
+
 .settings-panel { max-width: 720px; padding: 32px; }
 .settings-panel h2 { font-family: Manrope, sans-serif; font-size: 22px; }
 .settings-panel h3 { font-family: Manrope, sans-serif; font-size: 18px; margin-top: 28px; }

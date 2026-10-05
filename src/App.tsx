@@ -49,6 +49,8 @@ function Icon({ name, size = 20 }: { name: string; size?: number }) {
     menu: 'M4 7h16 M4 12h16 M4 17h16',
     external: 'M14 4h6v6 M20 4l-9 9 M10 5H5v14h14v-5',
     download: 'M12 4v11 M7 11l5 5 5-5 M5 20h14',
+    sun: 'M12 4v2 M12 18v2 M4 12H2 M22 12h-2 M6 6l-1.4-1.4 M19.4 19.4L18 18 M6 18l-1.4 1.4 M19.4 4.6L18 6 M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
+    moon: 'M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5',
   }
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] || paths.grid} /></svg>
 }
@@ -221,6 +223,8 @@ export default function App() {
   const [uploadError, setUploadError] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [partTarget, setPartTarget] = useState('')
+  const [theme, setTheme] = useState(() => load('nexalab-theme', 'dark'))
+  const [booting, setBooting] = useState(true)
   const { canInstall, installed, install } = useInstallApp()
 
   const active = orders.find(order => order.id === selected)
@@ -236,6 +240,11 @@ export default function App() {
   const freshOrders = orders.filter(order => order.status === 'Nuevo')
   const unreadCount = freshOrders.filter(order => !readIds.includes(order.id)).length
 
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('nexalab-theme', next)
+  }
   function notify(message: string) {
     setToast(message)
     window.setTimeout(() => setToast(''), 4000)
@@ -384,6 +393,11 @@ export default function App() {
     setPartTarget('')
   }, [page, partTarget])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setBooting(false), 5000)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   const titles: Record<string, { title: string; text: string }> = {
     Pedidos: { title: 'Pedidos', text: 'Revisá el listado y abrí un pedido cuando quieras ver el detalle.' },
     Proyectos: { title: 'Proyectos', text: 'Fotos de los trabajos del taller.' },
@@ -398,7 +412,20 @@ export default function App() {
     { label: 'Listos', value: readyCount, caption: 'Para retirar', icon: 'check', filter: 'Listo para retirar' },
   ]
 
-  return <div className={`app-shell${detailOpen || modal || receiptOpen || readyOpen ? ' sheet-open' : ''}`}>
+  return <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}${detailOpen || modal || receiptOpen || readyOpen ? ' sheet-open' : ''}`}>
+    {booting && (
+      <div className="boot-screen" role="status" aria-live="polite" aria-label="Cargando Nexalab">
+        <div className="boot-mark">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle className="boot-track" cx="50" cy="50" r="42" />
+            <circle className="boot-arc" cx="50" cy="50" r="42" />
+          </svg>
+          <strong>N</strong>
+        </div>
+        <p className="boot-name">Nexa<span>lab</span></p>
+        <p className="boot-caption">Preparando el taller</p>
+      </div>
+    )}
     <aside className="sidebar">
       <a className="brand" href="#" onClick={event => { event.preventDefault(); setPage('Pedidos'); setDetailOpen(false) }}>
         <span className="brand-icon"><Icon name="tool" /></span>
@@ -450,6 +477,9 @@ export default function App() {
           {!installed && (
             <button className="phone-install" onClick={askInstall}>Instalar</button>
           )}
+          <button className="phone-theme" aria-label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema oscuro'} onClick={toggleTheme}>
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={20} />
+          </button>
           <button className="phone-bell" aria-label="Ver notificaciones" onClick={openNotes}>
             <Icon name="bell" size={22} />
             {unreadCount > 0 && <span>{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -587,6 +617,9 @@ export default function App() {
         </>}
 
         {page === 'Proyectos' && <>
+          <button className="add-photo phone-only" onClick={() => openModal('project')}>
+            <Icon name="plus" size={18} />Agregar imagen
+          </button>
           <div className="gallery-heading">
             <span><i className="live-dot" />{projects.filter(project => project.published).length} publicados</span>
           </div>
@@ -863,12 +896,12 @@ export default function App() {
       <button className={page === 'Proyectos' ? 'on' : ''} onClick={() => go('Proyectos')}>
         <Icon name="image" size={20} /><span>Proyectos</span>
       </button>
+      <button className="phone-plus" aria-label={page === 'Proyectos' ? 'Agregar imagen' : 'Nuevo pedido'} onClick={() => openModal(page === 'Proyectos' ? 'project' : 'order')}>
+        <span className="phone-plus-mark"><Icon name="plus" size={26} /></span>
+        <span>Nuevo</span>
+      </button>
       <button className={page === 'Repuestos' ? 'on' : ''} onClick={() => go('Repuestos')}>
         <Icon name="parts" size={20} /><span>Repuestos</span>
-      </button>
-      <button className="phone-plus" aria-label="Nuevo pedido" onClick={() => openModal(page === 'Proyectos' ? 'project' : 'order')}>
-        <span className="phone-plus-mark"><Icon name="plus" size={18} /></span>
-        <span>Nuevo</span>
       </button>
       <button className={page === 'Configuración' ? 'on' : ''} onClick={() => go('Configuración')}>
         <Icon name="settings" size={20} /><span>Ajustes</span>
@@ -884,7 +917,7 @@ export default function App() {
             <h2>{modal === 'order' ? 'Nuevo pedido' : 'Nuevo proyecto'}</h2>
             <button className="icon-button" aria-label="Cerrar" onClick={() => setModal(null)}><Icon name="close" /></button>
           </div>
-          <p>{modal === 'order' ? 'Cliente, equipo y qué hay que revisar.' : 'Foto y datos para la galería local.'}</p>
+          <p>{modal === 'order' ? 'Cliente, equipo y qué hay que revisar.' : 'Elegí la foto y los datos del trabajo.'}</p>
           <form onSubmit={event => {
             event.preventDefault()
             const data = new FormData(event.currentTarget)
@@ -930,7 +963,7 @@ export default function App() {
               <label>Categoría
                 <select name="category"><option>Notebooks</option><option>Celulares</option><option>Computadoras</option><option>Tablets</option></select>
               </label>
-              <label className="checkbox-label"><input name="publish" type="checkbox" defaultChecked />Mostrar en la galería</label>
+              <label className="checkbox-label"><input name="publish" type="checkbox" defaultChecked />Publicar</label>
               {uploadError && <p className="error" role="alert">{uploadError}</p>}
             </>}
             <div className="modal-actions">
