@@ -1,5 +1,4 @@
 import { build } from "esbuild";
-import { rm } from "node:fs/promises";
 
 const shared = {
   bundle: true,
@@ -8,10 +7,5 @@ const shared = {
   packages: "external",
 };
 
-await build({ ...shared, entryPoints: ["api/pedidos.ts"], outfile: "api/pedidos.js" });
-await build({ ...shared, entryPoints: ["api/fotos.ts"], outfile: "api/fotos.js" });
-
-if (process.env.VERCEL) {
-  await rm("api/pedidos.ts");
-  await rm("api/fotos.ts");
-}
+await build({ ...shared, entryPoints: ["server/entries/pedidos.ts"], outfile: "api/pedidos.js" });
+await build({ ...shared, entryPoints: ["server/entries/fotos.ts"], outfile: "api/fotos.js" });

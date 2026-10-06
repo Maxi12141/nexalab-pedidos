@@ -1,6 +1,4 @@
 node_modules/
-api/pedidos.js
-api/fotos.js
 dist/
 build/
 .cache/
