@@ -152,7 +152,8 @@ export async function readPedidos() {
 export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[] }) {
   const sql = pedidosSql()
   if (!sql) return false
-  const orders = Array.from(new Map((payload.orders || []).filter(order => order.id && statuses.includes(order.status)).map(order => [order.id, order])).values())
+  const demoIds = new Set(['NX-0243', 'NX-0244', 'NX-0245', 'NX-0246', 'NX-0247', 'NX-0248', 'NX-717877'])
+  const orders = Array.from(new Map((payload.orders || []).filter(order => order.id && statuses.includes(order.status) && !demoIds.has(order.id)).map(order => [order.id, order])).values())
   const codes = orders.map(order => order.id)
   const rows = orders.map(order => ({
     codigo: order.id,
@@ -180,7 +181,7 @@ export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Re
     }))
   const readRows = (payload.reads || []).filter(code => codes.includes(code)).map(codigo => ({ codigo }))
   await sql.transaction(txn => [
-    txn`DELETE FROM pedidos WHERE codigo IS NULL OR NOT (codigo = ANY(${codes}::text[]))`,
+    txn`DELETE FROM pedidos WHERE (codigo IS NULL OR NOT (codigo = ANY(${codes}::text[]))) AND origen IS DISTINCT FROM 'web'`,
     txn`
       INSERT INTO pedidos (codigo, nombre, telefono, email, tipo_equipo, marca_modelo, problema, nota, estado, trabajo_realizado, precio, precio_texto, mensaje_cliente, origen, fecha_texto, actualizado_en)
       SELECT codigo, nombre, telefono, NULLIF(email, ''), tipo_equipo, marca_modelo, problema, nota, estado, trabajo_realizado, precio, precio_texto, mensaje_cliente, 'taller', fecha_texto, now()

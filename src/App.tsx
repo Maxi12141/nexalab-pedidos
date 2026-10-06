@@ -5,15 +5,6 @@ type Order = { id: string; name: string; email: string; phone: string; device: s
 type Receipt = { orderId: string; number: string; detail: string; issuedAt: string }
 type Project = { id: number; title: string; category: string; image: string; published: boolean }
 
-const initialOrders: Order[] = [
-  { id: 'NX-0248', name: 'Martín González', email: 'martin.gonzalez@gmail.com', phone: '+54 9 11 4582-3091', device: 'MacBook Pro 13”', problem: 'La notebook no enciende. Al conectar el cargador no muestra ninguna luz ni responde al botón de encendido.', note: 'La uso para trabajar y tengo archivos importantes. Si es posible, me gustaría conservar toda la información del disco. Puedo acercarla mañana por la tarde.', date: 'Hoy, 10:42', status: 'Nuevo' },
-  { id: 'NX-0247', name: 'Lucía Fernández', email: 'lucia.fernandez@gmail.com', phone: '+54 9 11 6124-8832', device: 'iPhone 13', problem: 'La pantalla se rompió después de una caída. El táctil sigue funcionando.', note: 'Prefiero una pantalla original. Contactarme por WhatsApp.', date: 'Hoy, 09:18', status: 'Nuevo' },
-  { id: 'NX-0246', name: 'Diego Ramírez', email: 'diego.r@gmail.com', phone: '+54 9 11 5372-1904', device: 'PC de escritorio', problem: 'Se apaga al jugar y hace mucho ruido.', note: 'No se le hizo mantenimiento en dos años.', date: 'Ayer, 17:35', status: 'En diagnóstico' },
-  { id: 'NX-0245', name: 'Sofía Martínez', email: 'sofi.m@gmail.com', phone: '+54 9 11 4018-2205', device: 'Samsung Galaxy S22', problem: 'El puerto de carga funciona de forma intermitente.', note: 'Ya probé con otro cable.', date: 'Ayer, 15:06', status: 'En reparación' },
-  { id: 'NX-0244', name: 'Nicolás Pérez', email: 'nico.p@gmail.com', phone: '+54 9 11 5821-7740', device: 'Lenovo IdeaPad', problem: 'Necesito cambiar el disco y ampliar la memoria.', note: 'Presupuesto antes de comenzar.', date: 'Ayer, 11:24', status: 'Listo para retirar' },
-  { id: 'NX-0243', name: 'Valentina López', email: 'vale.l@gmail.com', phone: '+54 9 11 4290-6137', device: 'iPad Air', problem: 'La batería dura muy poco.', note: 'Puedo retirarlo el viernes.', date: '22 oct, 16:50', status: 'Entregado' },
-]
-
 const initialProjects: Project[] = [
   { id: 1, title: 'Una segunda vida para esta MacBook', category: 'Notebooks', image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop', published: true },
   { id: 2, title: 'Cambio de pantalla · iPhone', category: 'Celulares', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&auto=format&fit=crop', published: true },
@@ -204,10 +195,10 @@ function receiptText(order: Order, receipt: Receipt) {
 }
 
 export default function App() {
-  const [orders, setOrders] = useState(() => load('nexalab-orders', initialOrders))
+  const [orders, setOrders] = useState<Order[]>(() => load('nexalab-orders', []))
   const [projects, setProjects] = useState(() => load('nexalab-projects', initialProjects))
   const [page, setPage] = useState('Pedidos')
-  const [selected, setSelected] = useState('NX-0248')
+  const [selected, setSelected] = useState('')
   const [detailOpen, setDetailOpen] = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
@@ -434,11 +425,13 @@ export default function App() {
           localStorage.setItem('nexalab-reads', JSON.stringify(pedidos.reads))
           setSelected(pedidos.orders[0].id)
         } else if (pedidos) {
-          await savePedidos({
-            orders: load('nexalab-orders', initialOrders),
-            receipts: load('nexalab-receipts', {} as Record<string, Receipt>),
-            reads: load('nexalab-reads', [] as string[]),
-          })
+          setOrders([])
+          setReceipts({})
+          setReadIds([])
+          localStorage.setItem('nexalab-orders', '[]')
+          localStorage.setItem('nexalab-receipts', '{}')
+          localStorage.setItem('nexalab-reads', '[]')
+          setSelected('')
         }
         if (fotos && fotos.length > 0) {
           setProjects(fotos)
@@ -460,6 +453,24 @@ export default function App() {
       window.clearTimeout(timer)
     }
   }, [])
+
+  useEffect(() => {
+    if (booting) return
+    const timer = window.setInterval(() => {
+      void fetchPedidos().then(pedidos => {
+        if (!pedidos) return
+        setOrders(current => {
+          const known = new Set(current.map(order => order.id))
+          const incoming = pedidos.orders.filter(order => !known.has(order.id))
+          if (!incoming.length) return current
+          const next = [...incoming, ...current]
+          localStorage.setItem('nexalab-orders', JSON.stringify(next))
+          return next
+        })
+      })
+    }, 8000)
+    return () => window.clearInterval(timer)
+  }, [booting])
 
   useEffect(() => {
     if (__APP_BUILD__ === 'dev') return
@@ -777,8 +788,7 @@ export default function App() {
             <p>Nombre del taller</p>
             <input value="Nexalab Taller" readOnly />
             <h3>Almacenamiento local</h3>
-            <p>Los pedidos y proyectos se guardan en este navegador. Esta versión usa datos de demostración y todavía no recibe pedidos de la página real.</p>
-            <p>Para trabajar en equipo y publicar en el sitio hace falta conectar una base de datos y habilitar el ingreso.</p>
+            <p>Los pedidos que llegan desde la página aparecen en este listado. Si no hay ninguno, es porque todavía no entró un pedido real.</p>
             <button className="secondary-button" onClick={() => go('Proyectos')}>Ver proyectos <Icon name="arrow" size={16} /></button>
           </section>
         )}
