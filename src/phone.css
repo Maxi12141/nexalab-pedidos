@@ -388,6 +388,7 @@
     align-items: center;
     text-align: left;
     min-height: 74px;
+    overflow: hidden;
     background: #10253a;
     border: 1px solid #1c3a52;
     border-left-width: 3px;
@@ -436,7 +437,15 @@
   .phone-order .client-avatar {
     width: 44px;
     height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 44px;
+    max-height: 44px;
     border-radius: 14px;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .phone-empty {
@@ -457,7 +466,16 @@
     margin-bottom: 16px;
   }
 
-  .gallery-heading { color: #9eb2c6; }
+  .gallery-heading { margin: 0 0 14px; }
+
+  .gallery-heading .published-pill {
+    width: 100%;
+    justify-content: center;
+    height: 44px;
+    border: 1.5px dashed #1f8f78;
+    background: #10253a;
+    color: #3ef0b0;
+  }
   .text-button { color: #3ef0b0; }
 
   .project-card,
@@ -772,7 +790,6 @@
   .app-shell.theme-light .phone-page-title p,
   .app-shell.theme-light .phone-order em,
   .app-shell.theme-light .phone-metrics span,
-  .app-shell.theme-light .gallery-heading,
   .app-shell.theme-light .project-info p,
   .app-shell.theme-light .publish-row,
   .app-shell.theme-light .local-info { color: #5d6d80; }
@@ -816,6 +833,12 @@
   .app-shell.theme-light .add-photo {
     color: #0c7c68;
     border-style: dashed;
+    border-color: #8fd4c4;
+    background: #f3fbf8;
+  }
+
+  .app-shell.theme-light .gallery-heading .published-pill {
+    color: #0c7c68;
     border-color: #8fd4c4;
     background: #f3fbf8;
   }

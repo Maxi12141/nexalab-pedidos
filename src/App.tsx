@@ -170,7 +170,11 @@ function useInstallApp() {
 }
 
 function initials(name: string) {
-  return name.split(' ').map(word => word[0]).join('')
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  const first = parts[0][0] || ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : ''
+  return `${first}${last}`.toLocaleUpperCase('es-AR')
 }
 
 function formatPesos(raw: string) {
@@ -497,27 +501,11 @@ export default function App() {
 
   return <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}${detailOpen || modal || receiptOpen || readyOpen ? ' sheet-open' : ''}`}>
     {booting && (
-      <div className="boot-screen" role="status" aria-live="polite" aria-label="Cargando Nexalab" translate="no">
+      <div className="boot-screen" role="status" aria-live="polite" aria-label="Cargando Nexalab">
         <div className="boot-card">
-          <div className="boot-mark">
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <defs>
-                <linearGradient id="boot-arc-grad" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#5dfff0" />
-                  <stop offset="50%" stopColor="#3ef0b0" />
-                  <stop offset="100%" stopColor="#ffb048" />
-                </linearGradient>
-              </defs>
-              <rect className="boot-frame" x="6" y="6" width="108" height="108" rx="32" />
-              <circle className="boot-spin" cx="60" cy="60" r="48" />
-              <circle className="boot-track" cx="60" cy="60" r="36" />
-              <circle className="boot-arc" cx="60" cy="60" r="36" />
-            </svg>
-            <strong translate="no">N</strong>
-          </div>
+          <span className="boot-spinner" aria-hidden="true" />
+          <p className="boot-caption">Cargando</p>
           <p className="boot-name" translate="no">Nexa<span>lab</span></p>
-          <p className="boot-caption">Preparando el taller</p>
-          <div className="boot-bar" aria-hidden="true"><span /></div>
         </div>
       </div>
     )}
@@ -716,7 +704,7 @@ export default function App() {
             <Icon name="plus" size={18} />Agregar imagen
           </button>
           <div className="gallery-heading">
-            <span><i className="live-dot" />{projects.filter(project => project.published).length} publicados</span>
+            <span className="published-pill"><i className="live-dot" />{projects.filter(project => project.published).length} publicados</span>
           </div>
           <div className="project-grid">
             {projects.map(project => (
