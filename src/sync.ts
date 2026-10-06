@@ -20,6 +20,7 @@ export type PedidosSnapshot = {
   orders: RemoteOrder[]
   receipts: Record<string, RemoteReceipt>
   reads: string[]
+  removed?: string[]
 }
 
 const key = import.meta.env.VITE_NEXALAB_KEY || ''

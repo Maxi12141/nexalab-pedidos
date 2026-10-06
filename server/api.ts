@@ -149,7 +149,7 @@ export async function readPedidos() {
   }
 }
 
-export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[] }) {
+export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[]; removed?: string[] }) {
   const sql = pedidosSql()
   if (!sql) return false
   const demoIds = new Set(['NX-0243', 'NX-0244', 'NX-0245', 'NX-0246', 'NX-0247', 'NX-0248', 'NX-717877'])
@@ -180,7 +180,11 @@ export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Re
       emitido_en: receipt.issuedAt,
     }))
   const readRows = (payload.reads || []).filter(code => codes.includes(code)).map(codigo => ({ codigo }))
+  const removed = Array.from(new Set((payload.removed || []).filter(code => typeof code === 'string' && code && !codes.includes(code))))
   await sql.transaction(txn => [
+    txn`DELETE FROM comprobantes WHERE codigo = ANY(${removed}::text[])`,
+    txn`DELETE FROM lecturas WHERE codigo = ANY(${removed}::text[])`,
+    txn`DELETE FROM pedidos WHERE codigo = ANY(${removed}::text[])`,
     txn`DELETE FROM pedidos WHERE (codigo IS NULL OR NOT (codigo = ANY(${codes}::text[]))) AND origen IS DISTINCT FROM 'web'`,
     txn`
       INSERT INTO pedidos (codigo, nombre, telefono, email, tipo_equipo, marca_modelo, problema, nota, estado, trabajo_realizado, precio, precio_texto, mensaje_cliente, origen, fecha_texto, actualizado_en)
@@ -284,7 +288,7 @@ async function route(kind: 'pedidos' | 'fotos', req: IncomingMessage, res: Serve
       return send(res, 200, data)
     }
     if (req.method === 'PUT' && kind === 'pedidos') {
-      const body = await readBody(req) as { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[] } | null
+      const body = await readBody(req) as { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[]; removed?: string[] } | null
       if (!body) return send(res, 400, { error: 'Pedido inválido' })
       const ok = await writePedidos(body)
       if (!ok) return send(res, 503, { error: 'Base de pedidos no disponible' })

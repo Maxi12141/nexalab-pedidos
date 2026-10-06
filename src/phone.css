@@ -388,7 +388,6 @@
     align-items: center;
     text-align: left;
     min-height: 74px;
-    overflow: hidden;
     background: #10253a;
     border: 1px solid #1c3a52;
     border-left-width: 3px;
@@ -404,7 +403,36 @@
   .phone-order.accent-3 { border-left-color: #5ee0a0; }
   .phone-order.accent-4 { border-left-color: #8ea3b8; }
 
-  .phone-order-copy { min-width: 0; }
+  .phone-order-main {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+  }
+
+  .order-decide { gap: 8px; }
+
+  .decide-accept,
+  .decide-reject {
+    width: 38px;
+    height: 38px;
+  }
+
+  .decide-accept {
+    background: #123f3a;
+    color: #3ef0b0;
+  }
+
+  .decide-reject {
+    background: #3a1820;
+    color: #ff8d85;
+  }
 
   .phone-order strong {
     display: -webkit-box;
@@ -752,6 +780,19 @@
     box-shadow: none;
   }
 
+  .danger-button {
+    background: #3a1820;
+    color: #ff8d85;
+    border-color: #5a2430;
+  }
+
+  .delete-confirm {
+    background: #2a1418;
+    border-color: #5a2430;
+  }
+
+  .delete-confirm p { color: #ffb4ae; }
+
   .secondary-button {
     background: #071422;
     color: #f7fbff;
@@ -837,10 +878,14 @@
     background: #f3fbf8;
   }
 
-  .app-shell.theme-light .gallery-heading .published-pill {
-    color: #0c7c68;
-    border-color: #8fd4c4;
-    background: #f3fbf8;
+  .app-shell.theme-light .decide-accept {
+    background: #e7f8ee;
+    color: #187743;
+  }
+
+  .app-shell.theme-light .decide-reject {
+    background: #fdeeee;
+    color: #b42318;
   }
 
   .app-shell.theme-light .phone-drawer {

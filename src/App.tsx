@@ -43,6 +43,7 @@ function Icon({ name, size = 20 }: { name: string; size?: number }) {
     download: 'M12 4v11 M7 11l5 5 5-5 M5 20h14',
     sun: 'M12 4v2 M12 18v2 M4 12H2 M22 12h-2 M6 6l-1.4-1.4 M19.4 19.4L18 18 M6 18l-1.4 1.4 M19.4 4.6L18 6 M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
     moon: 'M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5',
+    trash: 'M4 7h16 M10 11v6 M14 11v6 M6 7l1 14h10l1-14 M9 7V4h6v3',
   }
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] || paths.grid} /></svg>
 }
@@ -222,7 +223,8 @@ export default function App() {
   const [theme, setTheme] = useState(() => load('nexalab-theme', 'dark'))
   const [booting, setBooting] = useState(true)
   const [updateReady, setUpdateReady] = useState(false)
-  const synced = useRef(false)
+  const [deleteAsk, setDeleteAsk] = useState(false)
+  const removedIds = useRef(new Set<string>())
   const { canInstall, installed, install } = useInstallApp()
 
   const active = orders.find(order => order.id === selected)
@@ -261,9 +263,9 @@ export default function App() {
       ? 'Tocá Compartir y después Agregar a inicio.'
       : 'Abrí el menú del navegador y tocá Instalar y crear acceso directo.')
   }
-  function pushPedidos(nextOrders: Order[], nextReceipts: Record<string, Receipt>, nextReads: string[]) {
+  function pushPedidos(nextOrders: Order[], nextReceipts: Record<string, Receipt>, nextReads: string[], removed: string[] = []) {
     if (!synced.current) return
-    void savePedidos({ orders: nextOrders, receipts: nextReceipts, reads: nextReads }).then(ok => {
+    void savePedidos({ orders: nextOrders, receipts: nextReceipts, reads: nextReads, removed }).then(ok => {
       if (!ok) notify('No se pudo guardar el pedido en la base. Quedó en este teléfono.')
     })
   }
@@ -271,6 +273,36 @@ export default function App() {
     setOrders(next)
     localStorage.setItem('nexalab-orders', JSON.stringify(next))
     pushPedidos(next, receipts, readIds)
+  }
+  function acceptOrder(id: string) {
+    const nextReads = Array.from(new Set([...readIds, id]))
+    setReadIds(nextReads)
+    localStorage.setItem('nexalab-reads', JSON.stringify(nextReads))
+    const next = orders.map(order => order.id === id ? { ...order, status: 'En diagnóstico' } : order)
+    setOrders(next)
+    localStorage.setItem('nexalab-orders', JSON.stringify(next))
+    pushPedidos(next, receipts, nextReads)
+    notify('Pedido aceptado')
+  }
+  function removeOrder(id: string, message = 'Pedido eliminado') {
+    removedIds.current.add(id)
+    const next = orders.filter(order => order.id !== id)
+    const nextReceipts = { ...receipts }
+    delete nextReceipts[id]
+    const nextReads = readIds.filter(item => item !== id)
+    setOrders(next)
+    setReceipts(nextReceipts)
+    setReadIds(nextReads)
+    localStorage.setItem('nexalab-orders', JSON.stringify(next))
+    localStorage.setItem('nexalab-receipts', JSON.stringify(nextReceipts))
+    localStorage.setItem('nexalab-reads', JSON.stringify(nextReads))
+    pushPedidos(next, nextReceipts, nextReads, [id])
+    if (selected === id) {
+      setDetailOpen(false)
+      setDeleteAsk(false)
+      setSelected(next[0]?.id || '')
+    }
+    notify(message)
   }
   function saveProjects(next: Project[]) {
     let stored = true
@@ -362,6 +394,7 @@ export default function App() {
   function openOrder(id: string) {
     setSelected(id)
     setNotesOpen(false)
+    setDeleteAsk(false)
     setDetailOpen(true)
   }
   function openNotes() {
@@ -461,7 +494,7 @@ export default function App() {
         if (!pedidos) return
         setOrders(current => {
           const known = new Set(current.map(order => order.id))
-          const incoming = pedidos.orders.filter(order => !known.has(order.id))
+          const incoming = pedidos.orders.filter(order => !known.has(order.id) && !removedIds.current.has(order.id))
           if (!incoming.length) return current
           const next = [...incoming, ...current]
           localStorage.setItem('nexalab-orders', JSON.stringify(next))
@@ -636,14 +669,23 @@ export default function App() {
             </label>
             <div className="phone-list">
             {filtered.map(order => (
-              <button className={`phone-order accent-${statuses.indexOf(order.status)}`} key={order.id} onClick={() => openOrder(order.id)}>
-                <span className={`client-avatar color-${orders.indexOf(order) % 4}`}>{initials(order.name)}</span>
-                <span className="phone-order-copy">
-                  <strong>{order.device}</strong>
-                  <em>{order.name} · {order.date}</em>
-                </span>
-                <Badge status={order.status} compact />
-              </button>
+              <div className={`phone-order accent-${statuses.indexOf(order.status)}`} key={order.id}>
+                <button type="button" className="phone-order-main" onClick={() => openOrder(order.id)}>
+                  <span className={`client-avatar color-${orders.indexOf(order) % 4}`}>{initials(order.name)}</span>
+                  <span className="phone-order-copy">
+                    <strong>{order.device}</strong>
+                    <em>{order.name} · {order.date}</em>
+                  </span>
+                </button>
+                {order.status === 'Nuevo' ? (
+                  <div className="order-decide">
+                    <button type="button" className="decide-accept" aria-label={`Aceptar pedido de ${order.name}`} onClick={() => acceptOrder(order.id)}><Icon name="check" size={18} /></button>
+                    <button type="button" className="decide-reject" aria-label={`Rechazar pedido de ${order.name}`} onClick={() => removeOrder(order.id, 'Pedido rechazado')}><Icon name="close" size={18} /></button>
+                  </div>
+                ) : (
+                  <Badge status={order.status} compact />
+                )}
+              </div>
             ))}
             </div>
             {!filtered.length && <div className="phone-empty">No hay pedidos con ese filtro.</div>}
@@ -696,7 +738,16 @@ export default function App() {
                       <td>{order.device}</td>
                       <td><Badge status={order.status} /></td>
                       <td className="date-cell">{order.date}</td>
-                      <td><button className="row-button" aria-label={`Ver pedido de ${order.name}`}><Icon name="chevron" size={16} /></button></td>
+                      <td onClick={event => event.stopPropagation()}>
+                        {order.status === 'Nuevo' ? (
+                          <div className="order-decide">
+                            <button type="button" className="decide-accept" aria-label={`Aceptar pedido de ${order.name}`} onClick={() => acceptOrder(order.id)}><Icon name="check" size={16} /></button>
+                            <button type="button" className="decide-reject" aria-label={`Rechazar pedido de ${order.name}`} onClick={() => removeOrder(order.id, 'Pedido rechazado')}><Icon name="close" size={16} /></button>
+                          </div>
+                        ) : (
+                          <button className="row-button" aria-label={`Ver pedido de ${order.name}`}><Icon name="chevron" size={16} /></button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -846,6 +897,17 @@ export default function App() {
         <a className="whatsapp-button" target="_blank" rel="noreferrer" href={`https://wa.me/${active.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${active.name.split(' ')[0]}, te contactamos desde Nexalab por tu ${active.device}.`)}`}>
           <Icon name="phone" size={17} />Contactar por WhatsApp<Icon name="arrow" size={15} />
         </a>
+        {deleteAsk ? (
+          <div className="delete-confirm">
+            <p>¿Eliminar este pedido? No se puede deshacer.</p>
+            <div>
+              <button type="button" className="secondary-button" onClick={() => setDeleteAsk(false)}>Cancelar</button>
+              <button type="button" className="danger-button" onClick={() => removeOrder(active.id)}>Sí, eliminar</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="danger-button" onClick={() => setDeleteAsk(true)}><Icon name="trash" size={16} />Eliminar pedido</button>
+        )}
         <div className="detail-foot"><Icon name="globe" size={14} /> Recibido desde la web</div>
       </aside>
     </>}

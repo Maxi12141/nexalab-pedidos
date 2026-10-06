@@ -746,8 +746,69 @@ select, .settings-panel input, .modal input, .modal textarea, .modal select {
   font-weight: 600;
 }
 select { background-image: linear-gradient(45deg, transparent 50%, #7a7368 50%), linear-gradient(135deg, #7a7368 50%, transparent 50%); background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
-.whatsapp-button { width: 100%; background: #1f8a4c; box-shadow: none; }
-.whatsapp-button:hover { background: #176c3b; }
+.order-decide {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.decide-accept,
+.decide-reject {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+.decide-accept {
+  background: #e7f8ee;
+  color: #187743;
+}
+.decide-reject {
+  background: #fdeeee;
+  color: #b42318;
+}
+.decide-accept:hover { background: #d4f3e0; }
+.decide-reject:hover { background: #f9dcdc; }
+.danger-button {
+  width: 100%;
+  margin-top: 10px;
+  background: #fdeeee;
+  color: #b42318;
+  border: 1px solid #f3c5c0;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px 18px;
+}
+.danger-button:hover { background: #f9dcdc; }
+.delete-confirm {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff6f5;
+  border: 1px solid #f3c5c0;
+}
+.delete-confirm p {
+  margin: 0 0 12px;
+  color: #7a1f16;
+  font-size: 14px;
+  font-weight: 600;
+}
+.delete-confirm div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.delete-confirm .secondary-button,
+.delete-confirm .danger-button {
+  margin: 0;
+  padding: 12px 10px;
+}
 .detail-foot {
   display: flex;
   align-items: center;
