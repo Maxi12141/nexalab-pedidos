@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { fetchFotos, fetchPedidos, saveFotos, savePedidos } from './sync'
 
 type Order = { id: string; name: string; email: string; phone: string; device: string; problem: string; note: string; date: string; status: string; done?: string; price?: string; clientMessage?: string }
 type Receipt = { orderId: string; number: string; detail: string; issuedAt: string }
@@ -225,6 +226,8 @@ export default function App() {
   const [partTarget, setPartTarget] = useState('')
   const [theme, setTheme] = useState(() => load('nexalab-theme', 'dark'))
   const [booting, setBooting] = useState(true)
+  const [updateReady, setUpdateReady] = useState(false)
+  const synced = useRef(false)
   const { canInstall, installed, install } = useInstallApp()
 
   const active = orders.find(order => order.id === selected)
@@ -263,19 +266,34 @@ export default function App() {
       ? 'Tocá Compartir y después Agregar a inicio.'
       : 'Abrí el menú del navegador y tocá Instalar y crear acceso directo.')
   }
+  function pushPedidos(nextOrders: Order[], nextReceipts: Record<string, Receipt>, nextReads: string[]) {
+    if (!synced.current) return
+    void savePedidos({ orders: nextOrders, receipts: nextReceipts, reads: nextReads }).then(ok => {
+      if (!ok) notify('No se pudo guardar el pedido en la base. Quedó en este teléfono.')
+    })
+  }
   function saveOrders(next: Order[]) {
     setOrders(next)
     localStorage.setItem('nexalab-orders', JSON.stringify(next))
+    pushPedidos(next, receipts, readIds)
   }
   function saveProjects(next: Project[]) {
-    try {
-      localStorage.setItem('nexalab-projects', JSON.stringify(next))
-      setProjects(next)
-      return true
-    } catch {
-      setUploadError('No queda espacio local. Usá una imagen más pequeña.')
+    let stored = true
+    try { localStorage.setItem('nexalab-projects', JSON.stringify(next)) } catch { stored = false }
+    setProjects(next)
+    if (synced.current) {
+      void saveFotos(next).then(ok => {
+        if (ok) return
+        notify(stored
+          ? 'La foto quedó en este teléfono, pero no se guardó en la base.'
+          : 'No se pudo guardar la foto. Probá con una más chica.')
+      })
+    }
+    if (!stored && !synced.current) {
+      setUploadError('No se pudo guardar la foto. Probá con una más chica.')
       return false
     }
+    return true
   }
   function openReady(order: Order) {
     const done = order.done || 'Revisión y reparación.'
@@ -326,6 +344,7 @@ export default function App() {
     const next = { ...receipts, [active.id]: receipt }
     setReceipts(next)
     localStorage.setItem('nexalab-receipts', JSON.stringify(next))
+    pushPedidos(orders, next, readIds)
     return receipt
   }
   function printReceipt() {
@@ -359,6 +378,7 @@ export default function App() {
     const next = Array.from(new Set([...readIds, ...freshOrders.map(order => order.id)]))
     setReadIds(next)
     localStorage.setItem('nexalab-reads', JSON.stringify(next))
+    pushPedidos(orders, receipts, next)
   }
   function chooseFilter(status: string) {
     const chipsLeft = chipsRef.current?.scrollLeft ?? 0
@@ -394,8 +414,71 @@ export default function App() {
   }, [page, partTarget])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setBooting(false), 5000)
-    return () => window.clearTimeout(timer)
+    let cancel = false
+    const started = Date.now()
+    let timer = 0
+    ;(async () => {
+      try {
+        const [pedidos, fotos] = await Promise.all([fetchPedidos(), fetchFotos()])
+        if (cancel) return
+        if (pedidos && pedidos.orders.length > 0) {
+          setOrders(pedidos.orders)
+          setReceipts(pedidos.receipts)
+          setReadIds(pedidos.reads)
+          localStorage.setItem('nexalab-orders', JSON.stringify(pedidos.orders))
+          localStorage.setItem('nexalab-receipts', JSON.stringify(pedidos.receipts))
+          localStorage.setItem('nexalab-reads', JSON.stringify(pedidos.reads))
+          setSelected(pedidos.orders[0].id)
+        } else if (pedidos) {
+          await savePedidos({
+            orders: load('nexalab-orders', initialOrders),
+            receipts: load('nexalab-receipts', {} as Record<string, Receipt>),
+            reads: load('nexalab-reads', [] as string[]),
+          })
+        }
+        if (fotos && fotos.length > 0) {
+          setProjects(fotos)
+          localStorage.setItem('nexalab-projects', JSON.stringify(fotos))
+        } else if (fotos) {
+          await saveFotos(load('nexalab-projects', initialProjects))
+        }
+      } catch { /* si la base no responde, sigue lo guardado en el teléfono */ }
+      const wait = Math.max(0, 5000 - (Date.now() - started))
+      timer = window.setTimeout(() => {
+        if (!cancel) {
+          synced.current = true
+          setBooting(false)
+        }
+      }, wait)
+    })()
+    return () => {
+      cancel = true
+      window.clearTimeout(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (__APP_BUILD__ === 'dev') return
+    let stop = false
+    async function check() {
+      try {
+        const response = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' })
+        if (!response.ok) return
+        const data = await response.json() as { id?: string }
+        if (!stop && data.id && data.id !== __APP_BUILD__) setUpdateReady(true)
+      } catch { /* sin conexión no hay aviso */ }
+    }
+    void check()
+    const timer = window.setInterval(() => void check(), 30000)
+    function onVisible() {
+      if (document.visibilityState === 'visible') void check()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      stop = true
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   const titles: Record<string, { title: string; text: string }> = {
@@ -919,6 +1002,13 @@ export default function App() {
         <Icon name="settings" size={20} /><span>Ajustes</span>
       </button>
     </nav>
+
+    {updateReady && (
+      <div className="update-alert" role="status" translate="no">
+        <span>Cambios nuevos</span>
+        <button type="button" onClick={() => window.location.reload()}>actualizar</button>
+      </div>
+    )}
 
     {toast && <div className="toast" role="status"><Icon name="check" size={18} />{toast}</div>}
 

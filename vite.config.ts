@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => {
       sourcemap: emitSourcemaps ? 'inline' : false,
       minify: !emitSourcemaps,
     },
+    define: {
+      __APP_BUILD__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || 'dev'),
+    },
     plugins: [
 react(),
       tailwindcss(),
@@ -24,6 +27,7 @@ react(),
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
+      workshopApi(),
     ],
     resolve: {
       alias: {
@@ -46,6 +50,34 @@ react(),
     },
   }
 })
+
+function workshopApi(): Plugin {
+  return {
+    name: 'workshop-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const pathname = req.url?.split('?')[0]
+        if (pathname !== '/api/pedidos' && pathname !== '/api/fotos') return next()
+        try {
+          const api = await import('./server/api.ts')
+          if (pathname === '/api/pedidos') await api.handlePedidos(req, res)
+          else await api.handleFotos(req, res)
+        } catch {
+          res.statusCode = 500
+          res.setHeader('content-type', 'application/json')
+          res.end(JSON.stringify({ error: 'No se pudo guardar' }))
+        }
+      })
+    },
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ id: process.env.VERCEL_GIT_COMMIT_SHA || 'dev' }),
+      })
+    },
+  }
+}
 
 type FigmaSiteConfiguration = {
   title?: string
