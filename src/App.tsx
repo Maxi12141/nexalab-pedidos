@@ -4,6 +4,9 @@ import { fetchFotos, fetchPedidos, saveFotos, savePedidos } from './sync'
 type Order = { id: string; name: string; email: string; phone: string; device: string; problem: string; note: string; date: string; status: string; done?: string; price?: string; clientMessage?: string }
 type Receipt = { orderId: string; number: string; detail: string; issuedAt: string }
 type Project = { id: number; title: string; category: string; image: string; published: boolean }
+type Workshop = { name: string; slogan: string }
+
+const defaultWorkshop: Workshop = { name: 'Nexalab', slogan: 'Taller de reparación' }
 
 const initialProjects: Project[] = [
   { id: 1, title: 'Una segunda vida para esta MacBook', category: 'Notebooks', image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop', published: true },
@@ -49,9 +52,8 @@ function Icon({ name, size = 20 }: { name: string; size?: number }) {
 }
 
 const statuses = ['Nuevo', 'En diagnóstico', 'En reparación', 'Listo para retirar', 'Entregado']
-const tabs = ['Todos', 'Nuevo', 'En diagnóstico', 'En reparación', 'Listo para retirar', 'Entregado']
+const tabs = ['Todos', 'En diagnóstico', 'En reparación', 'Listo para retirar', 'Entregado']
 const tabLabel: Record<string, string> = {
-  Nuevo: 'Nuevos',
   'En diagnóstico': 'Diagnóstico',
   'En reparación': 'En reparación',
   'Listo para retirar': 'Listos',
@@ -169,6 +171,23 @@ function initials(name: string) {
   return `${first}${last}`.toLocaleUpperCase('es-AR')
 }
 
+function takeIn(order: Order): Order {
+  return order.status === 'Nuevo' ? { ...order, status: 'En diagnóstico' } : order
+}
+
+function splitBrand(name: string) {
+  const value = name.trim() || defaultWorkshop.name
+  if (/^nexalab$/i.test(value.replace(/\s+/g, ''))) return { lead: 'Nexa', tail: 'lab' }
+  const parts = value.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return { lead: value, tail: '' }
+  return { lead: `${parts.slice(0, -1).join(' ')} `, tail: parts[parts.length - 1] }
+}
+
+function Brand({ name, className = '' }: { name: string; className?: string }) {
+  const { lead, tail } = splitBrand(name)
+  return <span className={className} translate="no">{lead}{tail ? <span className="brand-accent">{tail}</span> : null}</span>
+}
+
 function formatPesos(raw: string) {
   const value = raw.trim().replace(/\$/g, '').replace(/\s/g, '')
   if (!value) return ''
@@ -184,9 +203,9 @@ function readyText(order: Order, done: string, price: string) {
   return `Hola ${order.name.split(' ')[0]}, tu ${order.device} ya está listo para retirar.\n\n${done.trim() || 'Trabajo finalizado.'}\n\nTotal: ${total}`
 }
 
-function receiptText(order: Order, receipt: Receipt) {
+function receiptText(order: Order, receipt: Receipt, company: string) {
   return [
-    `Turno ${receipt.number} · Nexalab`,
+    `Turno ${receipt.number} · ${company}`,
     `Fecha: ${receipt.issuedAt}`,
     `Cliente: ${order.name}`,
     `WhatsApp: ${order.phone}`,
@@ -221,11 +240,14 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [partTarget, setPartTarget] = useState('')
   const [theme, setTheme] = useState(() => load('nexalab-theme', 'dark'))
+  const [workshop, setWorkshop] = useState<Workshop>(() => load('nexalab-workshop', defaultWorkshop))
   const [booting, setBooting] = useState(true)
   const [updateReady, setUpdateReady] = useState(false)
   const [deleteAsk, setDeleteAsk] = useState(false)
   const removedIds = useRef(new Set<string>())
   const synced = useRef(false)
+  const snapshotRef = useRef({ orders, receipts, readIds })
+  snapshotRef.current = { orders, receipts, readIds }
   const { canInstall, installed, install } = useInstallApp()
 
   const active = orders.find(order => order.id === selected)
@@ -235,11 +257,11 @@ export default function App() {
       || order.status === filter
     return matchesFilter && `${order.name} ${order.id} ${order.device}`.toLowerCase().includes(search.toLowerCase())
   })
-  const newCount = orders.filter(order => order.status === 'Nuevo').length
   const inProgress = orders.filter(order => ['En diagnóstico', 'En reparación'].includes(order.status)).length
   const readyCount = orders.filter(order => order.status === 'Listo para retirar').length
-  const freshOrders = orders.filter(order => order.status === 'Nuevo')
-  const unreadCount = freshOrders.filter(order => !readIds.includes(order.id)).length
+  const doneCount = orders.filter(order => order.status === 'Entregado').length
+  const freshOrders = orders.filter(order => order.status !== 'Entregado' && !readIds.includes(order.id))
+  const unreadCount = freshOrders.length
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark'
@@ -275,15 +297,13 @@ export default function App() {
     localStorage.setItem('nexalab-orders', JSON.stringify(next))
     pushPedidos(next, receipts, readIds)
   }
-  function acceptOrder(id: string) {
-    const nextReads = Array.from(new Set([...readIds, id]))
-    setReadIds(nextReads)
-    localStorage.setItem('nexalab-reads', JSON.stringify(nextReads))
-    const next = orders.map(order => order.id === id ? { ...order, status: 'En diagnóstico' } : order)
-    setOrders(next)
-    localStorage.setItem('nexalab-orders', JSON.stringify(next))
-    pushPedidos(next, receipts, nextReads)
-    notify('Pedido aceptado')
+  function saveWorkshop(next: Workshop) {
+    const value = {
+      name: next.name.trim() || defaultWorkshop.name,
+      slogan: next.slogan.trim() || defaultWorkshop.slogan,
+    }
+    setWorkshop(value)
+    localStorage.setItem('nexalab-workshop', JSON.stringify(value))
   }
   function removeOrder(id: string, message = 'Pedido eliminado') {
     removedIds.current.add(id)
@@ -383,7 +403,7 @@ export default function App() {
     if (!active) return
     const receipt = buildReceipt()
     if (!receipt) return
-    const text = receiptText(active, receipt)
+    const text = receiptText(active, receipt, workshop.name)
     if (navigator.share) {
       try {
         await navigator.share({ title: `Turno ${receipt.number}`, text })
@@ -393,6 +413,12 @@ export default function App() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
   }
   function openOrder(id: string) {
+    const nextReads = Array.from(new Set([...readIds, id]))
+    if (nextReads.length !== readIds.length) {
+      setReadIds(nextReads)
+      localStorage.setItem('nexalab-reads', JSON.stringify(nextReads))
+      pushPedidos(orders, receipts, nextReads)
+    }
     setSelected(id)
     setNotesOpen(false)
     setDeleteAsk(false)
@@ -443,6 +469,11 @@ export default function App() {
   }, [page, partTarget])
 
   useEffect(() => {
+    document.title = workshop.name
+    document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', workshop.name)
+  }, [workshop.name])
+
+  useEffect(() => {
     let cancel = false
     const started = Date.now()
     let hideTimer = 0
@@ -457,13 +488,17 @@ export default function App() {
         const [pedidos, fotos] = await Promise.all([fetchPedidos(), fetchFotos()])
         if (cancel) return
         if (pedidos && pedidos.orders.length > 0) {
-          setOrders(pedidos.orders)
+          const nextOrders = pedidos.orders.map(takeIn)
+          setOrders(nextOrders)
           setReceipts(pedidos.receipts)
           setReadIds(pedidos.reads)
-          localStorage.setItem('nexalab-orders', JSON.stringify(pedidos.orders))
+          localStorage.setItem('nexalab-orders', JSON.stringify(nextOrders))
           localStorage.setItem('nexalab-receipts', JSON.stringify(pedidos.receipts))
           localStorage.setItem('nexalab-reads', JSON.stringify(pedidos.reads))
-          setSelected(pedidos.orders[0].id)
+          setSelected(nextOrders[0].id)
+          if (nextOrders.some((order, index) => order.status !== pedidos.orders[index].status)) {
+            void savePedidos({ orders: nextOrders, receipts: pedidos.receipts, reads: pedidos.reads })
+          }
         } else if (pedidos) {
           setOrders([])
           setReceipts({})
@@ -500,10 +535,14 @@ export default function App() {
         if (!pedidos) return
         setOrders(current => {
           const known = new Set(current.map(order => order.id))
-          const incoming = pedidos.orders.filter(order => !known.has(order.id) && !removedIds.current.has(order.id))
+          const incoming = pedidos.orders
+            .filter(order => !known.has(order.id) && !removedIds.current.has(order.id))
+            .map(takeIn)
           if (!incoming.length) return current
           const next = [...incoming, ...current]
           localStorage.setItem('nexalab-orders', JSON.stringify(next))
+          const snap = snapshotRef.current
+          void savePedidos({ orders: next, receipts: snap.receipts, reads: snap.readIds })
           return next
         })
       })
@@ -539,37 +578,37 @@ export default function App() {
     Pedidos: { title: 'Pedidos', text: 'Revisá el listado y abrí un pedido cuando quieras ver el detalle.' },
     Proyectos: { title: 'Proyectos', text: 'Fotos de los trabajos del taller.' },
     Repuestos: { title: 'Repuestos', text: 'Enlaces separados para comprar al mejor precio.' },
-    Configuración: { title: 'Configuración', text: 'Datos del taller y cómo se guarda la información.' },
+    Configuración: { title: 'Ajustes', text: 'Nombre de la empresa y cómo se guarda la información.' },
   }
   const heading = titles[page] ?? titles.Pedidos
   const stats = [
     { label: 'Pedidos totales', value: orders.length, caption: 'En este taller', icon: 'orders', filter: 'Todos' },
-    { label: 'Nuevos', value: newCount, caption: 'Sin revisar', icon: 'plus', filter: 'Nuevo' },
     { label: 'En proceso', value: inProgress, caption: 'Diagnóstico y reparación', icon: 'tool', filter: 'En proceso' },
     { label: 'Listos', value: readyCount, caption: 'Para retirar', icon: 'check', filter: 'Listo para retirar' },
+    { label: 'Entregados', value: doneCount, caption: 'Ya retirados', icon: 'arrow', filter: 'Entregado' },
   ]
 
   return <div className={`app-shell${theme === 'light' ? ' theme-light' : ''}${detailOpen || modal || receiptOpen || readyOpen ? ' sheet-open' : ''}`}>
     {booting && (
-      <div className="boot-screen" role="status" aria-live="polite" aria-label="Cargando Nexalab">
+      <div className="boot-screen" role="status" aria-live="polite" aria-label={`Cargando ${workshop.name}`}>
         <div className="boot-card">
           <span className="boot-spinner" aria-hidden="true" />
           <p className="boot-caption">Cargando</p>
-          <p className="boot-name" translate="no">Nexa<span>lab</span></p>
+          <p className="boot-name"><Brand name={workshop.name} /></p>
         </div>
       </div>
     )}
     <aside className="sidebar">
       <a className="brand" href="#" onClick={event => { event.preventDefault(); setPage('Pedidos'); setDetailOpen(false) }}>
         <span className="brand-icon"><Icon name="tool" /></span>
-        <span className="brand-copy"><strong>NEXA<span>LAB</span></strong><small>Panel de gestión</small></span>
+        <span className="brand-copy"><strong><Brand name={workshop.name} /></strong><small>{workshop.slogan}</small></span>
       </a>
       <nav className="main-nav">
         {[['Pedidos', 'orders'], ['Proyectos', 'image'], ['Repuestos', 'parts']].map(([label, icon]) => (
           <button key={label} className={page === label ? 'nav-item active' : 'nav-item'} onClick={() => go(label)}>
             <span className="nav-icon"><Icon name={icon} /></span>
             {label}
-            {label === 'Pedidos' && newCount > 0 && <span className="nav-count">{newCount}</span>}
+            {label === 'Pedidos' && unreadCount > 0 && <span className="nav-count">{unreadCount}</span>}
           </button>
         ))}
       </nav>
@@ -586,7 +625,7 @@ export default function App() {
 
     <div className="main-shell">
       <header className="topbar">
-        <div>Nexalab <span>/</span> <strong>{page}</strong></div>
+        <div><Brand name={workshop.name} /> <span>/</span> <strong>{page === 'Configuración' ? 'Ajustes' : page}</strong></div>
         <div className="topbar-right">
           {!installed && (
             <button className="install-button" onClick={askInstall}>
@@ -604,22 +643,25 @@ export default function App() {
       <main>
         <header className="phone-top phone-only">
           <button className="phone-menu" aria-label="Abrir menú" onClick={() => setMenuOpen(true)}>
-            <Icon name="menu" size={22} />
+            <Icon name="menu" size={20} />
           </button>
-          <div className="phone-logo">Nexa<span>lab</span></div>
-          {!installed && (
-            <button className="phone-install" onClick={askInstall}>Instalar</button>
-          )}
+          <div className="phone-brand">
+            <span className="phone-mark">{initials(workshop.name)}</span>
+            <div>
+              <strong className="phone-logo"><Brand name={workshop.name} /></strong>
+              <small>{workshop.slogan}</small>
+            </div>
+          </div>
           <button className="phone-theme" aria-label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema oscuro'} onClick={toggleTheme}>
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={20} />
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
           </button>
           <button className="phone-bell" aria-label="Ver notificaciones" onClick={openNotes}>
-            <Icon name="bell" size={22} />
+            <Icon name="bell" size={18} />
             {unreadCount > 0 && <span>{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
         </header>
 
-        {page !== 'Pedidos' && (
+        {page !== 'Pedidos' && page !== 'Configuración' && (
           <div className="phone-page-title phone-only">
             <h1>{heading.title}</h1>
             <p>{heading.text}</p>
@@ -628,7 +670,7 @@ export default function App() {
 
         <div className="page-heading">
           <div>
-            <div className="eyebrow">TALLER</div>
+            <div className="eyebrow">{workshop.name.toUpperCase()}</div>
             <h1>{heading.title}</h1>
             <p>{heading.text}</p>
           </div>
@@ -642,18 +684,27 @@ export default function App() {
 
         {page === 'Pedidos' && <>
           <section className="phone-home phone-only">
-            <div className="phone-metrics">
-              <button type="button" className={filter === 'Nuevo' ? 'on' : ''} onClick={() => chooseFilter('Nuevo')}>
-                <strong>{String(newCount).padStart(2, '0')}</strong>
-                <span>Nuevos</span>
+            <div className="phone-toolbar">
+              <div>
+                <h1>Pedidos</h1>
+                <p>{orders.length} en el taller</p>
+              </div>
+              <button type="button" className="phone-new" onClick={() => openModal('order')}>
+                <Icon name="plus" size={16} />Nuevo
               </button>
+            </div>
+            <div className="phone-metrics">
               <button type="button" className={filter === 'En proceso' ? 'on' : ''} onClick={() => chooseFilter('En proceso')}>
-                <strong>{String(inProgress).padStart(2, '0')}</strong>
+                <strong>{inProgress}</strong>
                 <span>En proceso</span>
               </button>
               <button type="button" className={filter === 'Listo para retirar' ? 'on' : ''} onClick={() => chooseFilter('Listo para retirar')}>
-                <strong>{String(readyCount).padStart(2, '0')}</strong>
+                <strong>{readyCount}</strong>
                 <span>Listos</span>
+              </button>
+              <button type="button" className={filter === 'Entregado' ? 'on' : ''} onClick={() => chooseFilter('Entregado')}>
+                <strong>{doneCount}</strong>
+                <span>Entregados</span>
               </button>
             </div>
             <div className="phone-chips" ref={chipsRef}>
@@ -670,28 +721,23 @@ export default function App() {
               ))}
             </div>
             <label className="phone-search">
-              <Icon name="search" size={18} />
+              <Icon name="search" size={16} />
               <input placeholder="Buscar cliente o equipo" value={search} onChange={event => setSearch(event.target.value)} />
             </label>
             <div className="phone-list">
             {filtered.map(order => (
-              <div className={`phone-order accent-${statuses.indexOf(order.status)}`} key={order.id}>
-                <button type="button" className="phone-order-main" onClick={() => openOrder(order.id)}>
-                  <span className={`client-avatar color-${orders.indexOf(order) % 4}`}>{initials(order.name)}</span>
-                  <span className="phone-order-copy">
-                    <strong>{order.device}</strong>
-                    <em>{order.name} · {order.date}</em>
-                  </span>
-                </button>
-                {order.status === 'Nuevo' ? (
-                  <div className="order-decide">
-                    <button type="button" className="decide-accept" aria-label={`Aceptar pedido de ${order.name}`} onClick={() => acceptOrder(order.id)}><Icon name="check" size={18} /></button>
-                    <button type="button" className="decide-reject" aria-label={`Rechazar pedido de ${order.name}`} onClick={() => removeOrder(order.id, 'Pedido rechazado')}><Icon name="close" size={18} /></button>
-                  </div>
-                ) : (
+              <button type="button" className={`phone-order accent-${statuses.indexOf(order.status)}`} key={order.id} onClick={() => openOrder(order.id)}>
+                <span className={`client-avatar color-${orders.indexOf(order) % 4}`}>{initials(order.name)}</span>
+                <span className="phone-order-copy">
+                  <strong>{order.device}</strong>
+                  <em>{order.name}</em>
+                  <small>{order.date}</small>
+                </span>
+                <span className="phone-order-side">
                   <Badge status={order.status} compact />
-                )}
-              </div>
+                  <Icon name="chevron" size={16} />
+                </span>
+              </button>
             ))}
             </div>
             {!filtered.length && <div className="phone-empty">No hay pedidos con ese filtro.</div>}
@@ -744,15 +790,8 @@ export default function App() {
                       <td>{order.device}</td>
                       <td><Badge status={order.status} /></td>
                       <td className="date-cell">{order.date}</td>
-                      <td onClick={event => event.stopPropagation()}>
-                        {order.status === 'Nuevo' ? (
-                          <div className="order-decide">
-                            <button type="button" className="decide-accept" aria-label={`Aceptar pedido de ${order.name}`} onClick={() => acceptOrder(order.id)}><Icon name="check" size={16} /></button>
-                            <button type="button" className="decide-reject" aria-label={`Rechazar pedido de ${order.name}`} onClick={() => removeOrder(order.id, 'Pedido rechazado')}><Icon name="close" size={16} /></button>
-                          </div>
-                        ) : (
-                          <button className="row-button" aria-label={`Ver pedido de ${order.name}`}><Icon name="chevron" size={16} /></button>
-                        )}
+                      <td>
+                        <button className="row-button" aria-label={`Ver pedido de ${order.name}`}><Icon name="chevron" size={16} /></button>
                       </td>
                     </tr>
                   ))}
@@ -762,7 +801,7 @@ export default function App() {
             </div>
             <div className="table-footer">
               <span>Mostrando {filtered.length} de {orders.length}</span>
-              <span className="demo-label">Datos de demostración</span>
+              <span className="demo-label">Taller</span>
             </div>
           </section>
         </>}
@@ -841,17 +880,38 @@ export default function App() {
 
         {page === 'Configuración' && (
           <section className="settings-panel">
-            <h2>Tu espacio de trabajo</h2>
-            <p>Nombre del taller</p>
-            <input value="Nexalab Taller" readOnly />
-            <h3>Almacenamiento local</h3>
-            <p>Los pedidos que llegan desde la página aparecen en este listado. Si no hay ninguno, es porque todavía no entró un pedido real.</p>
-            <button className="secondary-button" onClick={() => go('Proyectos')}>Ver proyectos <Icon name="arrow" size={16} /></button>
+            <div className="settings-card">
+              <h2>Empresa</h2>
+              <p>Este nombre se ve en la app, en los turnos y en los mensajes de WhatsApp.</p>
+              <label>
+                Nombre de la empresa
+                <input
+                  value={workshop.name}
+                  maxLength={40}
+                  autoComplete="organization"
+                  onChange={event => setWorkshop({ ...workshop, name: event.target.value })}
+                  onBlur={event => saveWorkshop({ ...workshop, name: event.target.value })}
+                />
+              </label>
+              <label>
+                Texto corto
+                <input
+                  value={workshop.slogan}
+                  maxLength={48}
+                  onChange={event => setWorkshop({ ...workshop, slogan: event.target.value })}
+                  onBlur={event => saveWorkshop({ ...workshop, slogan: event.target.value })}
+                />
+              </label>
+            </div>
+            <div className="settings-card">
+              <h2>Pedidos web</h2>
+              <p>Los pedidos que llegan desde la página entran directo al taller, en diagnóstico. Si más adelante te arrepentís, podés eliminarlos desde el detalle.</p>
+            </div>
           </section>
         )}
 
         <footer className="main-footer">
-          <span>NEXALAB <span>ADMIN</span></span>
+          <span><Brand name={workshop.name} /> <span>ADMIN</span></span>
           <span>Tecnología en buenas manos.</span>
           <span><i className="live-dot" /> Espacio local</span>
         </footer>
@@ -900,7 +960,7 @@ export default function App() {
           <button type="button" className="receipt-launch" onClick={() => openReady(active)}><Icon name="mail" size={16} />{active.clientMessage ? 'Editar mensaje' : 'Mensaje al cliente'}</button>
         )}
         <button type="button" className="receipt-launch" onClick={openReceipt}><Icon name="orders" size={16} />{receipts[active.id] ? 'Ver turno' : 'Hacer turno'}</button>
-        <a className="whatsapp-button" target="_blank" rel="noreferrer" href={`https://wa.me/${active.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${active.name.split(' ')[0]}, te contactamos desde Nexalab por tu ${active.device}.`)}`}>
+        <a className="whatsapp-button" target="_blank" rel="noreferrer" href={`https://wa.me/${active.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${active.name.split(' ')[0]}, te contactamos desde ${workshop.name} por tu ${active.device}.`)}`}>
           <Icon name="phone" size={17} />Contactar por WhatsApp<Icon name="arrow" size={15} />
         </a>
         {deleteAsk ? (
@@ -938,8 +998,8 @@ export default function App() {
           <article className="receipt-paper">
             <header>
               <div>
-                <strong>NEXALAB</strong>
-                <span>Taller de reparación</span>
+                <strong>{workshop.name.toUpperCase()}</strong>
+                <span>{workshop.slogan}</span>
               </div>
               <div className="receipt-id">
                 <em>TURNO</em>
@@ -1014,10 +1074,10 @@ export default function App() {
                 <strong>{order.device}</strong>
                 <em>{order.date}</em>
               </span>
-              <span className="notes-side">Nuevo</span>
+              <span className="notes-side">{shortStatus[order.status] ?? order.status}</span>
             </button>
           ))}
-          {!freshOrders.length && <div className="notes-empty">No hay pedidos nuevos.</div>}
+          {!freshOrders.length && <div className="notes-empty">No hay avisos pendientes.</div>}
         </div>
       </section>
     </>}
@@ -1026,7 +1086,7 @@ export default function App() {
       <button className="drawer-backdrop phone-drawer-backdrop" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)} />
       <aside className="phone-drawer" role="dialog" aria-label="Menú">
         <div className="phone-drawer-head">
-          <strong>Nexa<span>lab</span></strong>
+          <strong><Brand name={workshop.name} /></strong>
           <button className="icon-button" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)}><Icon name="close" size={18} /></button>
         </div>
         {!installed && (
@@ -1056,10 +1116,6 @@ export default function App() {
       </button>
       <button className={page === 'Proyectos' ? 'on' : ''} onClick={() => go('Proyectos')}>
         <Icon name="image" size={20} /><span>Proyectos</span>
-      </button>
-      <button className="phone-plus" aria-label={page === 'Proyectos' ? 'Agregar imagen' : 'Nuevo pedido'} onClick={() => openModal(page === 'Proyectos' ? 'project' : 'order')}>
-        <span className="phone-plus-mark"><Icon name="plus" size={26} /></span>
-        <span>Nuevo</span>
       </button>
       <button className={page === 'Repuestos' ? 'on' : ''} onClick={() => go('Repuestos')}>
         <Icon name="parts" size={20} /><span>Repuestos</span>
@@ -1095,7 +1151,7 @@ export default function App() {
             const data = new FormData(event.currentTarget)
             if (modal === 'order') {
               const id = `NX-${Date.now().toString().slice(-6)}`
-              saveOrders([{ id, name: String(data.get('name')), email: String(data.get('email')), phone: String(data.get('phone')), device: String(data.get('device')), problem: String(data.get('problem')), note: String(data.get('note')), date: 'Hoy, ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }), status: 'Nuevo' }, ...orders])
+              saveOrders([{ id, name: String(data.get('name')), email: String(data.get('email')), phone: String(data.get('phone')), device: String(data.get('device')), problem: String(data.get('problem')), note: String(data.get('note')), date: 'Hoy, ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }), status: 'En diagnóstico' }, ...orders])
               setSelected(id)
               setPage('Pedidos')
               setFilter('Todos')

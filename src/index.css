@@ -401,8 +401,7 @@ h1 {
 
 .orders-panel,
 .detail-panel,
-.project-card,
-.settings-panel {
+.project-card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -734,7 +733,7 @@ tbody tr:hover { background: #fbf8f3; }
   font-weight: 700;
   color: #5c564e;
 }
-select, .settings-panel input, .modal input, .modal textarea, .modal select {
+select, .settings-panel input, .settings-card input, .modal input, .modal textarea, .modal select {
   appearance: none;
   background: #fff;
   border: 1.5px solid #d5ddd4;
@@ -1081,7 +1080,7 @@ select { background-image: linear-gradient(45deg, transparent 50%, #7a7368 50%),
   animation: boot-rise 0.9s ease both;
 }
 
-.boot-name span { color: #3ef0b0; }
+.boot-name .brand-accent { color: #3ef0b0; }
 
 @keyframes boot-spin { to { transform: rotate(360deg); } }
 @keyframes boot-pulse {
@@ -1098,11 +1097,48 @@ select { background-image: linear-gradient(45deg, transparent 50%, #7a7368 50%),
   .boot-caption { opacity: 1; }
 }
 
-.settings-panel { max-width: 720px; padding: 32px; }
-.settings-panel h2 { font-family: Manrope, sans-serif; font-size: 22px; }
-.settings-panel h3 { font-family: Manrope, sans-serif; font-size: 18px; margin-top: 28px; }
-.settings-panel p { color: var(--muted); font-size: 15px; line-height: 1.7; margin: 10px 0 14px; }
-.settings-panel button { margin-top: 8px; }
+.settings-panel {
+  max-width: 720px;
+  padding: 8px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  display: grid;
+  gap: 14px;
+}
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 22px 22px 24px;
+}
+.settings-card h2 {
+  font-family: Manrope, sans-serif;
+  font-size: 18px;
+  letter-spacing: -0.3px;
+}
+.settings-card p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 6px 0 16px;
+}
+.settings-card label {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  color: #5c564e;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.settings-card input {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
 
 .toast {
   position: fixed;
@@ -1240,7 +1276,7 @@ select { background-image: linear-gradient(45deg, transparent 50%, #7a7368 50%),
 .field-amber { background: #fff4e4; border-color: #f3ddb0; color: #8a5a12; }
 .field-coral { background: #ffeee9; border-color: #f6cfc4; color: #9a3d2f; }
 .field-violet { background: #f3eefc; border-color: #ddd0f6; color: #5b3d91; }
-.modal input:focus, .modal textarea:focus, .modal select:focus, .settings-panel input:focus {
+.modal input:focus, .modal textarea:focus, .modal select:focus, .settings-panel input:focus, .settings-card input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(15, 124, 114, 0.12);
 }
