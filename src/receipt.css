@@ -22,6 +22,21 @@
   gap: 8px;
 }
 
+.detail-actions-col {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+.detail-actions-col .receipt-launch,
+.detail-actions-col .whatsapp-button,
+.detail-actions-col .danger-button {
+  width: 100%;
+  margin: 0;
+  height: 46px;
+  padding: 0 18px;
+  justify-content: center;
+  text-align: center;
+}
 .receipt-launch {
   width: 100%;
   margin-bottom: 10px;
@@ -49,9 +64,9 @@
 }
 
 .receipt-toolbar {
-  display: grid;
-  grid-template-columns: 42px 1fr 42px;
+  display: flex;
   align-items: center;
+  gap: 8px;
   padding: 12px 14px;
   position: sticky;
   top: 0;
@@ -60,9 +75,39 @@
 }
 
 .receipt-toolbar strong {
+  flex: 1;
   text-align: center;
   font-family: Manrope, sans-serif;
   font-size: 18px;
+  pointer-events: none;
+}
+
+.receipt-back,
+.receipt-exit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.receipt-back {
+  padding: 8px 12px;
+  background: #10253a;
+  border: 1px solid #1c3a52;
+  color: #f7fbff;
+}
+
+.receipt-back svg { transform: rotate(180deg); }
+
+.receipt-exit {
+  width: 100%;
+  margin-top: 10px;
+  height: 46px;
+  background: transparent;
+  border: 1.5px solid #3a556c;
+  color: #f7fbff;
 }
 
 .receipt-toolbar .icon-button {

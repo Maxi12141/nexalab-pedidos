@@ -607,6 +607,35 @@ tbody tr:hover { background: #fbf8f3; }
 .row-selected .row-button,
 .row-button:hover { background: var(--accent); color: white; }
 
+.delivered-wrap {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding: 12px 24px 8px;
+}
+.phone-home .delivered-wrap {
+  padding: 8px 0 0;
+  border-top: 0;
+}
+.delivered-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+}
+.delivered-toggle svg {
+  transform: rotate(90deg);
+  color: var(--muted);
+}
+.delivered-toggle.open svg { transform: rotate(-90deg); }
+.delivered-list { margin-top: 10px; }
 .table-footer {
   display: flex;
   justify-content: space-between;

@@ -52,7 +52,7 @@ function Icon({ name, size = 20 }: { name: string; size?: number }) {
 }
 
 const statuses = ['Nuevo', 'En diagnóstico', 'En reparación', 'Listo para retirar', 'Entregado']
-const tabs = ['Todos', 'En diagnóstico', 'En reparación', 'Listo para retirar', 'Entregado']
+const tabs = ['Todos', 'En diagnóstico', 'En reparación', 'Listo para retirar']
 const tabLabel: Record<string, string> = {
   'En diagnóstico': 'Diagnóstico',
   'En reparación': 'En reparación',
@@ -244,6 +244,7 @@ export default function App() {
   const [booting, setBooting] = useState(true)
   const [updateReady, setUpdateReady] = useState(false)
   const [deleteAsk, setDeleteAsk] = useState(false)
+  const [showDelivered, setShowDelivered] = useState(false)
   const removedIds = useRef(new Set<string>())
   const synced = useRef(false)
   const snapshotRef = useRef({ orders, receipts, readIds })
@@ -251,11 +252,13 @@ export default function App() {
   const { canInstall, installed, install } = useInstallApp()
 
   const active = orders.find(order => order.id === selected)
-  const filtered = orders.filter(order => {
-    const matchesFilter = filter === 'Todos'
+  const searched = orders.filter(order => `${order.name} ${order.id} ${order.device}`.toLowerCase().includes(search.toLowerCase()))
+  const deliveredOrders = searched.filter(order => order.status === 'Entregado')
+  const filtered = searched.filter(order => {
+    if (order.status === 'Entregado') return false
+    return filter === 'Todos'
       || (filter === 'En proceso' && ['En diagnóstico', 'En reparación'].includes(order.status))
       || order.status === filter
-    return matchesFilter && `${order.name} ${order.id} ${order.device}`.toLowerCase().includes(search.toLowerCase())
   })
   const inProgress = orders.filter(order => ['En diagnóstico', 'En reparación'].includes(order.status)).length
   const readyCount = orders.filter(order => order.status === 'Listo para retirar').length
@@ -286,9 +289,9 @@ export default function App() {
       ? 'Tocá Compartir y después Agregar a inicio.'
       : 'Abrí el menú del navegador y tocá Instalar y crear acceso directo.')
   }
-  function pushPedidos(nextOrders: Order[], nextReceipts: Record<string, Receipt>, nextReads: string[], removed: string[] = []) {
+  function pushPedidos(nextOrders: Order[], nextReceipts: Record<string, Receipt>, nextReads: string[], removed: string[] = [], nextWorkshop = workshop) {
     if (!synced.current) return
-    void savePedidos({ orders: nextOrders, receipts: nextReceipts, reads: nextReads, removed }).then(ok => {
+    void savePedidos({ orders: nextOrders, receipts: nextReceipts, reads: nextReads, removed, workshop: nextWorkshop }).then(ok => {
       if (!ok) notify('No se pudo guardar el pedido en la base. Quedó en este teléfono.')
     })
   }
@@ -304,6 +307,7 @@ export default function App() {
     }
     setWorkshop(value)
     localStorage.setItem('nexalab-workshop', JSON.stringify(value))
+    pushPedidos(orders, receipts, readIds, [], value)
   }
   function removeOrder(id: string, message = 'Pedido eliminado') {
     removedIds.current.add(id)
@@ -368,11 +372,13 @@ export default function App() {
   function changeStatus(status: string) {
     const next = orders.map(order => order.id === selected ? { ...order, status } : order)
     saveOrders(next)
-    notify('Estado del pedido actualizado')
-    if (status === 'Listo para retirar') {
-      const order = next.find(item => item.id === selected)
-      if (order) openReady(order)
+    if (status === 'Entregado') {
+      setShowDelivered(true)
+      setDetailOpen(false)
+      notify('Pedido guardado en entregados')
+      return
     }
+    notify('Estado del pedido actualizado')
   }
   function openReceipt() {
     if (!active) return
@@ -436,6 +442,15 @@ export default function App() {
     pushPedidos(orders, receipts, next)
   }
   function chooseFilter(status: string) {
+    if (status === 'Entregado') {
+      setShowDelivered(true)
+      setFilter('Todos')
+      window.setTimeout(() => {
+        const node = [...document.querySelectorAll<HTMLElement>('.delivered-wrap')].find(item => item.offsetParent !== null)
+        node?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 50)
+      return
+    }
     const chipsLeft = chipsRef.current?.scrollLeft ?? 0
     setFilter(status)
     requestAnimationFrame(() => {
@@ -496,8 +511,16 @@ export default function App() {
           localStorage.setItem('nexalab-receipts', JSON.stringify(pedidos.receipts))
           localStorage.setItem('nexalab-reads', JSON.stringify(pedidos.reads))
           setSelected(nextOrders[0].id)
+          if (pedidos.workshop?.name) {
+            const value = {
+              name: pedidos.workshop.name,
+              slogan: pedidos.workshop.slogan || defaultWorkshop.slogan,
+            }
+            setWorkshop(value)
+            localStorage.setItem('nexalab-workshop', JSON.stringify(value))
+          }
           if (nextOrders.some((order, index) => order.status !== pedidos.orders[index].status)) {
-            void savePedidos({ orders: nextOrders, receipts: pedidos.receipts, reads: pedidos.reads })
+            void savePedidos({ orders: nextOrders, receipts: pedidos.receipts, reads: pedidos.reads, workshop: pedidos.workshop })
           }
         } else if (pedidos) {
           setOrders([])
@@ -687,7 +710,7 @@ export default function App() {
             <div className="phone-toolbar">
               <div>
                 <h1>Pedidos</h1>
-                <p>{orders.length} en el taller</p>
+                <p>{filtered.length} en curso</p>
               </div>
               <button type="button" className="phone-new" onClick={() => openModal('order')}>
                 <Icon name="plus" size={16} />Nuevo
@@ -740,11 +763,36 @@ export default function App() {
               </button>
             ))}
             </div>
-            {!filtered.length && <div className="phone-empty">No hay pedidos con ese filtro.</div>}
+            {!filtered.length && <div className="phone-empty">No hay pedidos en curso con ese filtro.</div>}
+            <div className="delivered-wrap">
+              <button type="button" className={`delivered-toggle${showDelivered ? ' open' : ''}`} onClick={() => setShowDelivered(open => !open)}>
+                <span>Ver entregados · {doneCount}</span>
+                <Icon name="chevron" size={16} />
+              </button>
+              {showDelivered && (
+                <div className="phone-list delivered-list">
+                  {deliveredOrders.map(order => (
+                    <button type="button" className={`phone-order accent-${statuses.indexOf(order.status)}`} key={order.id} onClick={() => openOrder(order.id)}>
+                      <span className={`client-avatar color-${orders.indexOf(order) % 4}`}>{initials(order.name)}</span>
+                      <span className="phone-order-copy">
+                        <strong>{order.device}</strong>
+                        <em>{order.name}</em>
+                        <small>{order.date}</small>
+                      </span>
+                      <span className="phone-order-side">
+                        <Badge status={order.status} compact />
+                        <Icon name="chevron" size={16} />
+                      </span>
+                    </button>
+                  ))}
+                  {!deliveredOrders.length && <div className="phone-empty">Todavía no hay pedidos entregados.</div>}
+                </div>
+              )}
+            </div>
           </section>
           <div className="stats-grid">
             {stats.map((stat, index) => (
-              <button className={`stat-card stat-${index}${filter === stat.filter ? ' active' : ''}`} key={stat.label} onClick={() => setFilter(stat.filter)}>
+              <button className={`stat-card stat-${index}${stat.filter === 'Entregado' ? (showDelivered ? ' active' : '') : (filter === stat.filter ? ' active' : '')}`} key={stat.label} onClick={() => chooseFilter(stat.filter)}>
                 <div className="stat-label">{stat.label}<span className="stat-icon"><Icon name={stat.icon} size={18} /></span></div>
                 <div className="stat-value">{String(stat.value).padStart(2, '0')}</div>
                 <small>{stat.caption}</small>
@@ -797,10 +845,41 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
-              {!filtered.length && <div className="empty">No hay pedidos con ese filtro.</div>}
+              {!filtered.length && <div className="empty">No hay pedidos en curso con ese filtro.</div>}
+            </div>
+            <div className="delivered-wrap">
+              <button type="button" className={`delivered-toggle${showDelivered ? ' open' : ''}`} onClick={() => setShowDelivered(open => !open)}>
+                <span>Ver entregados · {doneCount}</span>
+                <Icon name="chevron" size={16} />
+              </button>
+              {showDelivered && (
+                <div className="table-scroll">
+                  <table>
+                    <tbody>
+                      {deliveredOrders.map(order => (
+                        <tr key={order.id} className={detailOpen && selected === order.id ? 'row-selected' : ''} onClick={() => openOrder(order.id)}>
+                          <td>
+                            <div className="client-cell">
+                              <span className={`client-avatar color-${orders.indexOf(order) % 4}`}>{initials(order.name)}</span>
+                              <div><strong>{order.name}</strong><small>#{order.id}</small></div>
+                            </div>
+                          </td>
+                          <td>{order.device}</td>
+                          <td><Badge status={order.status} /></td>
+                          <td className="date-cell">{order.date}</td>
+                          <td>
+                            <button className="row-button" aria-label={`Ver pedido de ${order.name}`}><Icon name="chevron" size={16} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {!deliveredOrders.length && <div className="empty">Todavía no hay pedidos entregados.</div>}
+                </div>
+              )}
             </div>
             <div className="table-footer">
-              <span>Mostrando {filtered.length} de {orders.length}</span>
+              <span>Mostrando {filtered.length} en curso</span>
               <span className="demo-label">Taller</span>
             </div>
           </section>
@@ -956,36 +1035,37 @@ export default function App() {
             {statuses.map(status => <option key={status}>{status}</option>)}
           </select>
         </div>
-        {(active.status === 'Listo para retirar' || active.status === 'Entregado') && (
-          <button type="button" className="receipt-launch" onClick={() => openReady(active)}><Icon name="mail" size={16} />{active.clientMessage ? 'Editar mensaje' : 'Mensaje al cliente'}</button>
-        )}
-        <button type="button" className="receipt-launch" onClick={openReceipt}><Icon name="orders" size={16} />{receipts[active.id] ? 'Ver turno' : 'Hacer turno'}</button>
-        <a className="whatsapp-button" target="_blank" rel="noreferrer" href={`https://wa.me/${active.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${active.name.split(' ')[0]}, te contactamos desde ${workshop.name} por tu ${active.device}.`)}`}>
-          <Icon name="phone" size={17} />Contactar por WhatsApp<Icon name="arrow" size={15} />
-        </a>
-        {deleteAsk ? (
-          <div className="delete-confirm">
-            <p>¿Eliminar este pedido? No se puede deshacer.</p>
-            <div>
-              <button type="button" className="secondary-button" onClick={() => setDeleteAsk(false)}>Cancelar</button>
-              <button type="button" className="danger-button" onClick={() => removeOrder(active.id)}>Sí, eliminar</button>
+        <div className="detail-actions-col">
+          <button type="button" className="receipt-launch" onClick={openReceipt}><Icon name="orders" size={16} />{receipts[active.id] ? 'Ver turno' : 'Hacer turno'}</button>
+          <a className="whatsapp-button" target="_blank" rel="noreferrer" href={`https://wa.me/${active.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${active.name.split(' ')[0]}, te contactamos desde ${workshop.name} por tu ${active.device}.`)}`}>
+            <Icon name="phone" size={17} />Contactar por WhatsApp
+          </a>
+          {deleteAsk ? (
+            <div className="delete-confirm">
+              <p>¿Eliminar este pedido? No se puede deshacer.</p>
+              <div>
+                <button type="button" className="secondary-button" onClick={() => setDeleteAsk(false)}>Cancelar</button>
+                <button type="button" className="danger-button" onClick={() => removeOrder(active.id)}>Sí, eliminar</button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button type="button" className="danger-button" onClick={() => setDeleteAsk(true)}><Icon name="trash" size={16} />Eliminar pedido</button>
-        )}
+          ) : (
+            <button type="button" className="danger-button" onClick={() => setDeleteAsk(true)}><Icon name="trash" size={16} />Eliminar pedido</button>
+          )}
+        </div>
         <div className="detail-foot"><Icon name="globe" size={14} /> Recibido desde la web</div>
       </aside>
     </>}
 
     {receiptOpen && active && (
-      <div className="receipt-screen">
+      <div className="receipt-screen" onClick={() => setReceiptOpen(false)}>
         <div className="receipt-toolbar">
-          <button type="button" className="icon-button" aria-label="Cerrar turno" onClick={() => setReceiptOpen(false)}><Icon name="close" size={18} /></button>
+          <button type="button" className="receipt-back" onClick={event => { event.stopPropagation(); setReceiptOpen(false) }}>
+            <Icon name="chevron" size={18} />Volver
+          </button>
           <strong>Turno</strong>
           <span />
         </div>
-        <div className="receipt-layout">
+        <div className="receipt-layout" onClick={event => event.stopPropagation()}>
           <form className="receipt-form" onSubmit={event => { event.preventDefault(); printReceipt() }}>
             <label>Descripción de lo que tiene
               <textarea rows={3} value={draftDetail} onChange={event => setDraftDetail(event.target.value)} />
@@ -994,6 +1074,7 @@ export default function App() {
               <button type="submit" className="bank-fill"><Icon name="print" size={16} />Imprimir</button>
               <button type="button" className="bank-outline" onClick={shareReceipt}><Icon name="share" size={16} />Compartir</button>
             </div>
+            <button type="button" className="receipt-exit" onClick={() => setReceiptOpen(false)}>Volver al pedido</button>
           </form>
           <article className="receipt-paper">
             <header>
@@ -1036,7 +1117,9 @@ export default function App() {
     {readyOpen && active && (
       <div className="receipt-screen">
         <div className="receipt-toolbar">
-          <button type="button" className="icon-button" aria-label="Cerrar mensaje" onClick={() => { saveReadyMessage(); setReadyOpen(false) }}><Icon name="close" size={18} /></button>
+          <button type="button" className="receipt-back" onClick={() => { saveReadyMessage(); setReadyOpen(false) }}>
+            <Icon name="chevron" size={18} />Volver
+          </button>
           <strong>Listo para retirar</strong>
           <span />
         </div>

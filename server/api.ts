@@ -142,14 +142,25 @@ export async function readPedidos() {
       issuedAt: String(row.emitido_en || ''),
     }
   }
+  let workshop = { name: 'Nexalab', slogan: 'Taller de reparación' }
+  try {
+    const rows = await sql`SELECT nombre, slogan FROM taller WHERE id = 1`
+    if (rows[0]) {
+      workshop = {
+        name: String(rows[0].nombre || workshop.name),
+        slogan: String(rows[0].slogan || workshop.slogan),
+      }
+    }
+  } catch { /* la tabla se crea aparte; si falta, usa el nombre por defecto */ }
   return {
     orders: orders.map(row => asOrder(row)).filter((order): order is OrderRow => Boolean(order)),
     receipts: receiptMap,
     reads: reads.map(row => String(row.codigo || '')).filter(Boolean),
+    workshop,
   }
 }
 
-export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[]; removed?: string[] }) {
+export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[]; removed?: string[]; workshop?: { name?: string; slogan?: string } }) {
   const sql = pedidosSql()
   if (!sql) return false
   const demoIds = new Set(['NX-0243', 'NX-0244', 'NX-0245', 'NX-0246', 'NX-0247', 'NX-0248', 'NX-717877'])
@@ -181,6 +192,8 @@ export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Re
     }))
   const readRows = (payload.reads || []).filter(code => codes.includes(code)).map(codigo => ({ codigo }))
   const removed = Array.from(new Set((payload.removed || []).filter(code => typeof code === 'string' && code && !codes.includes(code))))
+  const workshopName = payload.workshop?.name?.trim()
+  const workshopSlogan = payload.workshop?.slogan?.trim()
   await sql.transaction(txn => [
     txn`DELETE FROM comprobantes WHERE codigo = ANY(${removed}::text[])`,
     txn`DELETE FROM lecturas WHERE codigo = ANY(${removed}::text[])`,
@@ -235,6 +248,13 @@ export async function writePedidos(payload: { orders?: OrderRow[]; receipts?: Re
       ON CONFLICT (codigo) DO NOTHING
     `,
   ])
+  if (workshopName) {
+    await sql`
+      INSERT INTO taller (id, nombre, slogan, actualizado_en)
+      VALUES (1, ${workshopName}, ${workshopSlogan || 'Taller de reparación'}, now())
+      ON CONFLICT (id) DO UPDATE SET nombre = EXCLUDED.nombre, slogan = EXCLUDED.slogan, actualizado_en = now()
+    `
+  }
   return true
 }
 
@@ -288,7 +308,7 @@ async function route(kind: 'pedidos' | 'fotos', req: IncomingMessage, res: Serve
       return send(res, 200, data)
     }
     if (req.method === 'PUT' && kind === 'pedidos') {
-      const body = await readBody(req) as { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[]; removed?: string[] } | null
+      const body = await readBody(req) as { orders?: OrderRow[]; receipts?: Record<string, ReceiptRow>; reads?: string[]; removed?: string[]; workshop?: { name?: string; slogan?: string } } | null
       if (!body) return send(res, 400, { error: 'Pedido inválido' })
       const ok = await writePedidos(body)
       if (!ok) return send(res, 503, { error: 'Base de pedidos no disponible' })

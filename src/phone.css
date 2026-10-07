@@ -819,6 +819,17 @@
     box-shadow: none;
   }
 
+  .detail-actions-col .whatsapp-button {
+    height: 46px;
+    padding: 0 18px;
+  }
+
+  .delivered-toggle {
+    background: #151c26;
+    border-color: #243042;
+    color: #eef3f8;
+  }
+
   .danger-button {
     background: #3a1820;
     color: #ff8d85;
@@ -926,6 +937,12 @@
   .app-shell.theme-light .phone-nav {
     background: #fff;
     border-top-color: #d9e3ee;
+  }
+
+  .app-shell.theme-light .delivered-toggle {
+    background: #fff;
+    border-color: #d9e3ee;
+    color: #142033;
   }
 
   .app-shell.theme-light .add-photo {

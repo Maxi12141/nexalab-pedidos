@@ -16,11 +16,14 @@ export type RemoteOrder = {
 export type RemoteReceipt = { orderId: string; number: string; detail: string; issuedAt: string }
 export type RemoteProject = { id: number; title: string; category: string; image: string; published: boolean }
 
+export type RemoteWorkshop = { name: string; slogan: string }
+
 export type PedidosSnapshot = {
   orders: RemoteOrder[]
   receipts: Record<string, RemoteReceipt>
   reads: string[]
   removed?: string[]
+  workshop?: RemoteWorkshop
 }
 
 const key = import.meta.env.VITE_NEXALAB_KEY || ''
@@ -49,7 +52,12 @@ async function request(path: string, body?: unknown) {
 export async function fetchPedidos(): Promise<PedidosSnapshot | null> {
   const data = await request('/api/pedidos').catch(() => null) as PedidosSnapshot | null
   if (!data || !Array.isArray(data.orders)) return null
-  return { orders: data.orders, receipts: data.receipts || {}, reads: data.reads || [] }
+  return {
+    orders: data.orders,
+    receipts: data.receipts || {},
+    reads: data.reads || [],
+    workshop: data.workshop?.name ? data.workshop : undefined,
+  }
 }
 
 export async function savePedidos(snapshot: PedidosSnapshot) {
