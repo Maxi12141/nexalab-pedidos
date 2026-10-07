@@ -29,13 +29,21 @@ async function request(path: string, body?: unknown) {
   const headers = new Headers()
   if (key) headers.set('x-nexalab-key', key)
   if (body !== undefined) headers.set('content-type', 'application/json')
-  const response = await fetch(path, {
-    method: body === undefined ? 'GET' : 'PUT',
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  if (!response.ok) return null
-  return response.json()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  try {
+    const response = await fetch(path, {
+      method: body === undefined ? 'GET' : 'PUT',
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+    if (!response.ok) return null
+    return response.json()
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export async function fetchPedidos(): Promise<PedidosSnapshot | null> {

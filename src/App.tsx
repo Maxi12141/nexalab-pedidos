@@ -225,6 +225,7 @@ export default function App() {
   const [updateReady, setUpdateReady] = useState(false)
   const [deleteAsk, setDeleteAsk] = useState(false)
   const removedIds = useRef(new Set<string>())
+  const synced = useRef(false)
   const { canInstall, installed, install } = useInstallApp()
 
   const active = orders.find(order => order.id === selected)
@@ -444,7 +445,13 @@ export default function App() {
   useEffect(() => {
     let cancel = false
     const started = Date.now()
-    let timer = 0
+    let hideTimer = 0
+    function openApp() {
+      if (cancel) return
+      synced.current = true
+      setBooting(false)
+    }
+    const failsafe = window.setTimeout(openApp, 2500)
     ;(async () => {
       try {
         const [pedidos, fotos] = await Promise.all([fetchPedidos(), fetchFotos()])
@@ -470,20 +477,19 @@ export default function App() {
           setProjects(fotos)
           localStorage.setItem('nexalab-projects', JSON.stringify(fotos))
         } else if (fotos) {
-          await saveFotos(load('nexalab-projects', initialProjects))
+          void saveFotos(load('nexalab-projects', initialProjects))
         }
       } catch { /* si la base no responde, sigue lo guardado en el teléfono */ }
-      const wait = Math.max(0, 5000 - (Date.now() - started))
-      timer = window.setTimeout(() => {
-        if (!cancel) {
-          synced.current = true
-          setBooting(false)
-        }
+      const wait = Math.max(0, 700 - (Date.now() - started))
+      hideTimer = window.setTimeout(() => {
+        window.clearTimeout(failsafe)
+        openApp()
       }, wait)
     })()
     return () => {
       cancel = true
-      window.clearTimeout(timer)
+      window.clearTimeout(hideTimer)
+      window.clearTimeout(failsafe)
     }
   }, [])
 
