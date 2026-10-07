@@ -1265,17 +1265,13 @@ select { background-image: linear-gradient(45deg, transparent 50%, #7a7368 50%),
   margin-bottom: 6px;
   padding: 6px 10px 8px;
   border-radius: 16px;
-  border: 1px solid transparent;
+  border: 1px solid #e6dfd4;
+  background: #fff;
+  color: #5c564e;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
-.field-teal { background: #e7f7f2; border-color: #b7e4d6; color: #0c675f; }
-.field-blue { background: #e8f1ff; border-color: #c5d8fb; color: #1d4f91; }
-.field-green { background: #e7f8ec; border-color: #b7e4c4; color: #176c3b; }
-.field-amber { background: #fff4e4; border-color: #f3ddb0; color: #8a5a12; }
-.field-coral { background: #ffeee9; border-color: #f6cfc4; color: #9a3d2f; }
-.field-violet { background: #f3eefc; border-color: #ddd0f6; color: #5b3d91; }
 .modal input:focus, .modal textarea:focus, .modal select:focus, .settings-panel input:focus, .settings-card input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(15, 124, 114, 0.12);

@@ -1167,14 +1167,14 @@ export default function App() {
           }}>
             <div className="modal-fields">
             {modal === 'order' ? <>
-              <label className="field field-teal">Nombre completo<input name="name" required placeholder="Nombre y apellido" /></label>
+              <label className="field">Nombre completo<input name="name" required placeholder="Nombre y apellido" /></label>
               <div className="form-columns">
-                <label className="field field-blue">Correo electrónico<input name="email" type="email" required placeholder="cliente@email.com" /></label>
-                <label className="field field-green">Teléfono / WhatsApp<input name="phone" type="tel" required placeholder="+54 9 11..." /></label>
+                <label className="field">Correo electrónico<input name="email" type="email" required placeholder="cliente@email.com" /></label>
+                <label className="field">Teléfono / WhatsApp<input name="phone" type="tel" required placeholder="+54 9 11..." /></label>
               </div>
-              <label className="field field-amber">Equipo<input name="device" required placeholder="Marca y modelo del equipo" /></label>
-              <label className="field field-coral">Problema<textarea name="problem" required rows={2} placeholder="Qué le pasa al equipo" /></label>
-              <label className="field field-violet">Nota<textarea name="note" rows={2} placeholder="Algo más para tener en cuenta" /></label>
+              <label className="field">Equipo<input name="device" required placeholder="Marca y modelo del equipo" /></label>
+              <label className="field">Problema<textarea name="problem" required rows={2} placeholder="Qué le pasa al equipo" /></label>
+              <label className="field">Nota<textarea name="note" rows={2} placeholder="Algo más para tener en cuenta" /></label>
             </> : <>
               <label className="upload-zone">
                 <Icon name="upload" size={28} />
@@ -1188,8 +1188,8 @@ export default function App() {
                   reader.readAsDataURL(file)
                 }} />
               </label>
-              <label className="field field-teal">Título<input name="title" required placeholder="Por ejemplo: Reparación de MacBook Pro" /></label>
-              <label className="field field-amber">Categoría
+              <label className="field">Título<input name="title" required placeholder="Por ejemplo: Reparación de MacBook Pro" /></label>
+              <label className="field">Categoría
                 <select name="category"><option>Notebooks</option><option>Celulares</option><option>Computadoras</option><option>Tablets</option></select>
               </label>
               <label className="checkbox-label"><input name="publish" type="checkbox" defaultChecked />Publicar</label>
